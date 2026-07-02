@@ -1,9 +1,11 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from godata.repos import TripRepo
 from godata.models import Trip, User
 from ..schemas import TripIn, TripOut
 from ..auth import require_user
 
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/trips", tags=["trips"])
 
 
@@ -25,16 +27,30 @@ def _serialize(t: Trip) -> TripOut:
 
 @router.get("", response_model=list[TripOut])
 def list_trips() -> list[TripOut]:
-    return [_serialize(t) for t in TripRepo.list_all()]
+    log.debug("GET /api/trips")
+    try:
+        trips = TripRepo.list_all()
+        log.debug("list_trips: %d résultats", len(trips))
+        return [_serialize(t) for t in trips]
+    except Exception as e:
+        log.exception("Erreur dans GET /api/trips: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("", response_model=TripOut, status_code=status.HTTP_201_CREATED)
 def create_trip(body: TripIn, user: User = Depends(require_user)) -> TripOut:
-    trip = TripRepo.create(owner_id=user.id, **body.model_dump())
-    return _serialize(trip)
+    log.debug("POST /api/trips — user_id=%s", user.id)
+    try:
+        trip = TripRepo.create(owner_id=user.id, **body.model_dump())
+        log.debug("Trip created: id=%s", trip.id)
+        return _serialize(trip)
+    except Exception as e:
+        log.exception("Erreur dans POST /api/trips: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.delete("/{trip_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_trip(trip_id: int, user: User = Depends(require_user)) -> None:
+    log.debug("DELETE /api/trips/%s — user_id=%s", trip_id, user.id)
     if not TripRepo.delete(trip_id, user.id):
         raise HTTPException(status_code=404, detail="Trajet introuvable ou non autorisé")

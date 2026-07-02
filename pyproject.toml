@@ -7,7 +7,7 @@ dependencies = [
     "fastapi[standard]>=0.115",
     "peewee>=3.17",
     "psycopg2-binary>=2.9",
-    "passlib[bcrypt]>=1.7",
+    "bcrypt>=4.0",
     "python-jose[cryptography]>=3.3",
     "python-dotenv>=1.0",
     "godata",
@@ -17,8 +17,11 @@ dependencies = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.wheel]
+packages = ["api"]
+
 [tool.uv.sources]
-godata = { git = "https://github.com/rcmamara-dotcom/jibli-dz-godata" }
+godata = { git = "https://github.com/rcmamara-dotcom/jibli-dz-godata", branch = "claude/push-backend-go-data-j0zsuw" }
 
 [tool.uv]
 dev-dependencies = [
