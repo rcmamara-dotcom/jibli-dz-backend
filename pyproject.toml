@@ -1,0 +1,33 @@
+[project]
+name = "jibli-dz-backend"
+version = "0.1.0"
+description = "Backend API pour Jibli DZ — FastAPI + Peewee + PostgreSQL"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi[standard]>=0.115",
+    "peewee>=3.17",
+    "psycopg2-binary>=2.9",
+    "passlib[bcrypt]>=1.7",
+    "python-jose[cryptography]>=3.3",
+    "python-dotenv>=1.0",
+    "godata",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv.sources]
+godata = { git = "https://github.com/rcmamara-dotcom/jibli-dz-godata" }
+
+[tool.uv]
+dev-dependencies = [
+    "ruff>=0.6",
+    "pyright>=1.1",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.pyright]
+pythonVersion = "3.11"

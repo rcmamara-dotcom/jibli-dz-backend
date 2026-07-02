@@ -1,0 +1,44 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv(override=True)
+
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from godata import init_db, database
+from .routes import auth, trips, parcels
+
+app = FastAPI(title="Jibli DZ API", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=os.environ.get("CORS_ORIGINS", "http://localhost:5173").split(","),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(auth.router)
+app.include_router(trips.router)
+app.include_router(parcels.router)
+
+
+@app.middleware("http")
+async def db_connection(request: Request, call_next):
+    database.connect(reuse_if_open=True)
+    try:
+        response = await call_next(request)
+    finally:
+        if not database.is_closed():
+            database.close()
+    return response
+
+
+@app.on_event("startup")
+def startup() -> None:
+    init_db()
+
+
+@app.get("/api/health")
+def health() -> dict[str, str]:
+    return {"status": "ok"}
