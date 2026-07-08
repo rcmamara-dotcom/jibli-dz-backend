@@ -22,9 +22,13 @@ def verify_password(plain: str, hashed: str) -> bool:
     return bcrypt.checkpw(plain.encode(), hashed.encode())
 
 
-def create_token(user_id: int) -> str:
+def create_token(user: User) -> str:
     exp = datetime.now(timezone.utc) + timedelta(minutes=EXPIRE_MINUTES)
-    return jwt.encode({"sub": str(user_id), "exp": exp}, SECRET, algorithm=ALGORITHM)
+    return jwt.encode(
+        {"sub": str(user.id), "adm": bool(user.is_admin), "exp": exp},
+        SECRET,
+        algorithm=ALGORITHM,
+    )
 
 
 def get_current_user(token: str | None = Depends(oauth2_scheme)) -> User | None:
@@ -41,4 +45,10 @@ def get_current_user(token: str | None = Depends(oauth2_scheme)) -> User | None:
 def require_user(user: User | None = Depends(get_current_user)) -> User:
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Non authentifié")
+    return user
+
+
+def require_admin(user: User = Depends(require_user)) -> User:
+    if not user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès réservé aux administrateurs")
     return user

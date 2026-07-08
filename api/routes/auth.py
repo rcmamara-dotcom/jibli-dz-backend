@@ -19,7 +19,7 @@ def register(body: RegisterIn) -> TokenOut:
             raise HTTPException(status_code=400, detail="Cet e-mail est déjà utilisé")
         user = UserRepo.create(body.email, hash_password(body.password))
         log.debug("User created: id=%s email=%s", user.id, user.email)
-        return TokenOut(access_token=create_token(user.id))
+        return TokenOut(access_token=create_token(user))
     except HTTPException:
         raise
     except Exception as e:
@@ -37,7 +37,7 @@ def login(body: LoginIn) -> TokenOut:
             log.debug("Auth failed for email=%s", body.email)
             raise HTTPException(status_code=401, detail="E-mail ou mot de passe incorrect")
         log.debug("Login OK: id=%s", user.id)
-        return TokenOut(access_token=create_token(user.id))
+        return TokenOut(access_token=create_token(user))
     except HTTPException:
         raise
     except Exception as e:

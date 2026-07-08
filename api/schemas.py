@@ -60,6 +60,23 @@ class ParcelIn(BaseModel):
     wa: str
 
 
+# ── Admin ─────────────────────────────────────────────────────────────────────
+
+class UserAdminOut(BaseModel):
+    id: int
+    email: str
+    is_admin: bool
+    created_at: datetime
+    model_config = {"from_attributes": True}
+
+
+class AdminStatsOut(BaseModel):
+    users: int
+    trips: int
+    parcels: int
+    reviews: int
+
+
 # ── Review ────────────────────────────────────────────────────────────────────
 
 class ReviewIn(BaseModel):
