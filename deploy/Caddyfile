@@ -1,0 +1,24 @@
+{$DOMAIN:localhost} {
+
+    # ── Frontend (fichiers statiques React) ──────────────────────────────────
+    root * /var/www/html
+    file_server
+    # SPA fallback : toutes les routes inconnues → index.html
+    try_files {path} /index.html
+
+    # ── Backend API ───────────────────────────────────────────────────────────
+    handle /api/* {
+        reverse_proxy api:8000
+    }
+
+    # ── Sécurité basique ─────────────────────────────────────────────────────
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+    }
+
+    # ── Compression ──────────────────────────────────────────────────────────
+    encode gzip
+}
