@@ -1,6 +1,6 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status
-from godata.repos import TripRepo
+from godata.repos import TripRepo, ReviewRepo
 from godata.models import Trip, User
 from ..schemas import TripIn, TripOut
 from ..auth import require_user
@@ -9,7 +9,8 @@ log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/trips", tags=["trips"])
 
 
-def _serialize(t: Trip) -> TripOut:
+def _serialize(t: Trip, ratings: dict | None = None) -> TripOut:
+    rating_info = (ratings or {}).get(t.owner_id) if t.owner_id else None
     return TripOut(
         id=t.id,
         name=t.name,
@@ -22,6 +23,8 @@ def _serialize(t: Trip) -> TripOut:
         wa=t.wa,
         owner_id=t.owner_id,
         created_at=t.created_at,
+        avg_rating=rating_info["avg"] if rating_info else None,
+        review_count=rating_info["count"] if rating_info else 0,
     )
 
 
@@ -30,8 +33,10 @@ def list_trips() -> list[TripOut]:
     log.debug("GET /api/trips")
     try:
         trips = TripRepo.list_all()
+        owner_ids = list({t.owner_id for t in trips if t.owner_id})
+        ratings = ReviewRepo.bulk_ratings(owner_ids)
         log.debug("list_trips: %d résultats", len(trips))
-        return [_serialize(t) for t in trips]
+        return [_serialize(t, ratings) for t in trips]
     except Exception as e:
         log.exception("Erreur dans GET /api/trips: %s", e)
         raise HTTPException(status_code=500, detail=str(e))

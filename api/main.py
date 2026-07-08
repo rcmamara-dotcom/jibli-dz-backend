@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from godata import init_db, database
-from .routes import auth, trips, parcels
+from .routes import auth, trips, parcels, reviews
 from .scheduler import start_scheduler, stop_scheduler
 
 app = FastAPI(title="Jibli DZ API", version="1.0.0")
@@ -29,6 +29,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(trips.router)
 app.include_router(parcels.router)
+app.include_router(reviews.router)
 
 
 @app.middleware("http")

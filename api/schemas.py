@@ -44,6 +44,8 @@ class TripOut(BaseModel):
     wa: str
     owner_id: int | None
     created_at: datetime
+    avg_rating: float | None = None
+    review_count: int = 0
 
     model_config = {"from_attributes": True}
 
@@ -57,6 +59,27 @@ class ParcelIn(BaseModel):
     budget: float = 0
     wa: str
 
+
+# ── Review ────────────────────────────────────────────────────────────────────
+
+class ReviewIn(BaseModel):
+    rating: int       # 1–5
+    comment: str | None = None
+
+
+class ReviewOut(BaseModel):
+    id: int
+    trip_id: int
+    reviewer_id: int
+    reviewer_email: str
+    rating: int
+    comment: str | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ── Parcel ────────────────────────────────────────────────────────────────────
 
 class ParcelOut(BaseModel):
     id: int
