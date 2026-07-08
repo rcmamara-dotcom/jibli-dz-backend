@@ -1,10 +1,11 @@
 import logging
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
 from godata.repos import TripRepo, ReviewRepo
 from godata.models import Trip, User
 from ..schemas import TripIn, TripOut
 from ..auth import require_user
 from ..scheduler import notify_matching_parcels
+from ..limiter import limiter
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/trips", tags=["trips"])
@@ -30,21 +31,27 @@ def _serialize(t: Trip, ratings: dict | None = None) -> TripOut:
 
 
 @router.get("", response_model=list[TripOut])
-def list_trips() -> list[TripOut]:
-    log.debug("GET /api/trips")
+def list_trips(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+) -> list[TripOut]:
+    log.debug("GET /api/trips page=%s limit=%s", page, limit)
     try:
         trips = TripRepo.list_all()
         owner_ids = list({t.owner_id for t in trips if t.owner_id})
         ratings = ReviewRepo.bulk_ratings(owner_ids)
-        log.debug("list_trips: %d résultats", len(trips))
-        return [_serialize(t, ratings) for t in trips]
+        offset = (page - 1) * limit
+        page_trips = trips[offset:offset + limit]
+        log.debug("list_trips: %d/%d résultats", len(page_trips), len(trips))
+        return [_serialize(t, ratings) for t in page_trips]
     except Exception as e:
         log.exception("Erreur dans GET /api/trips: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("", response_model=TripOut, status_code=status.HTTP_201_CREATED)
-def create_trip(body: TripIn, bg: BackgroundTasks, user: User = Depends(require_user)) -> TripOut:
+@limiter.limit("5/hour")
+def create_trip(request: Request, body: TripIn, bg: BackgroundTasks, user: User = Depends(require_user)) -> TripOut:
     log.debug("POST /api/trips — user_id=%s", user.id)
     try:
         trip = TripRepo.create(owner_id=user.id, **body.model_dump())

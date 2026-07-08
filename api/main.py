@@ -12,11 +12,20 @@ log = logging.getLogger(__name__)
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
 from godata import init_db, database
 from .routes import auth, trips, parcels, reviews, admin
 from .scheduler import start_scheduler, stop_scheduler
+from .limiter import limiter
 
 app = FastAPI(title="Jibli DZ API", version="1.0.0")
+app.state.limiter = limiter
+
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(status_code=429, content={"detail": "Trop de requêtes — réessaie dans quelques minutes"})
 
 app.add_middleware(
     CORSMiddleware,

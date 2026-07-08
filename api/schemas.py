@@ -1,5 +1,14 @@
+import re
 from datetime import date, datetime
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
+
+_WA_RE = re.compile(r"^\+\d{7,15}$")
+
+
+def _validate_wa(v: str) -> str:
+    if not _WA_RE.match(v):
+        raise ValueError("Numéro WhatsApp invalide (format : +33612345678)")
+    return v
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -19,6 +28,15 @@ class TokenOut(BaseModel):
     token_type: str = "bearer"
 
 
+class ForgotPasswordIn(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordIn(BaseModel):
+    token: str
+    password: str
+
+
 # ── Trip ──────────────────────────────────────────────────────────────────────
 
 class TripIn(BaseModel):
@@ -30,6 +48,11 @@ class TripIn(BaseModel):
     weight: float | None = None
     cap_desc: str | None = None
     wa: str
+
+    @field_validator("wa")
+    @classmethod
+    def validate_wa(cls, v: str) -> str:
+        return _validate_wa(v)
 
 
 class TripOut(BaseModel):
@@ -58,6 +81,11 @@ class ParcelIn(BaseModel):
     description: str
     budget: float = 0
     wa: str
+
+    @field_validator("wa")
+    @classmethod
+    def validate_wa(cls, v: str) -> str:
+        return _validate_wa(v)
 
 
 # ── Admin ─────────────────────────────────────────────────────────────────────

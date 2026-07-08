@@ -1,9 +1,10 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from godata.repos import ParcelRepo
 from godata.models import Parcel, User
 from ..schemas import ParcelIn, ParcelOut
 from ..auth import require_user
+from ..limiter import limiter
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/parcels", tags=["parcels"])
@@ -23,19 +24,25 @@ def _serialize(p: Parcel) -> ParcelOut:
 
 
 @router.get("", response_model=list[ParcelOut])
-def list_parcels() -> list[ParcelOut]:
-    log.debug("GET /api/parcels")
+def list_parcels(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+) -> list[ParcelOut]:
+    log.debug("GET /api/parcels page=%s limit=%s", page, limit)
     try:
         parcels = ParcelRepo.list_all()
-        log.debug("list_parcels: %d résultats", len(parcels))
-        return [_serialize(p) for p in parcels]
+        offset = (page - 1) * limit
+        page_parcels = parcels[offset:offset + limit]
+        log.debug("list_parcels: %d/%d résultats", len(page_parcels), len(parcels))
+        return [_serialize(p) for p in page_parcels]
     except Exception as e:
         log.exception("Erreur dans GET /api/parcels: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("", response_model=ParcelOut, status_code=status.HTTP_201_CREATED)
-def create_parcel(body: ParcelIn, user: User = Depends(require_user)) -> ParcelOut:
+@limiter.limit("5/hour")
+def create_parcel(request: Request, body: ParcelIn, user: User = Depends(require_user)) -> ParcelOut:
     log.debug("POST /api/parcels — user_id=%s", user.id)
     try:
         parcel = ParcelRepo.create(owner_id=user.id, **body.model_dump())
