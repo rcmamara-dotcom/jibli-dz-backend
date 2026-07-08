@@ -5,7 +5,14 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BACKEND_DIR="$(dirname "$SCRIPT_DIR")"
-FRONTEND_DIR="$(dirname "$BACKEND_DIR")/jibli-dz"
+
+# Sur le VPS : /opt/jibli-dz/backend → /opt/jibli-dz/frontend
+# En local (dev) : ../jibli-dz-backend/../jibli-dz
+if [[ -d "$(dirname "$BACKEND_DIR")/frontend" ]]; then
+  FRONTEND_DIR="$(dirname "$BACKEND_DIR")/frontend"
+else
+  FRONTEND_DIR="$(dirname "$BACKEND_DIR")/jibli-dz"
+fi
 
 echo "▶ JIBLI DZ — déploiement"
 
