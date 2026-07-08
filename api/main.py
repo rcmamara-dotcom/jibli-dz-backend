@@ -14,6 +14,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from godata import init_db, database
 from .routes import auth, trips, parcels
+from .scheduler import start_scheduler, stop_scheduler
 
 app = FastAPI(title="Jibli DZ API", version="1.0.0")
 
@@ -52,6 +53,12 @@ def startup() -> None:
               os.environ.get("DB_HOST"), os.environ.get("DB_USER"), os.environ.get("DB_NAME"))
     init_db()
     log.debug("init_db() OK — tables créées")
+    start_scheduler()
+
+
+@app.on_event("shutdown")
+def shutdown() -> None:
+    stop_scheduler()
 
 
 @app.get("/api/health")
