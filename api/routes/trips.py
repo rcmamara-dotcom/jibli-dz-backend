@@ -1,9 +1,10 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from godata.repos import TripRepo, ReviewRepo
 from godata.models import Trip, User
 from ..schemas import TripIn, TripOut
 from ..auth import require_user
+from ..scheduler import notify_matching_parcels
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/trips", tags=["trips"])
@@ -43,11 +44,12 @@ def list_trips() -> list[TripOut]:
 
 
 @router.post("", response_model=TripOut, status_code=status.HTTP_201_CREATED)
-def create_trip(body: TripIn, user: User = Depends(require_user)) -> TripOut:
+def create_trip(body: TripIn, bg: BackgroundTasks, user: User = Depends(require_user)) -> TripOut:
     log.debug("POST /api/trips — user_id=%s", user.id)
     try:
         trip = TripRepo.create(owner_id=user.id, **body.model_dump())
         log.debug("Trip created: id=%s", trip.id)
+        bg.add_task(notify_matching_parcels, trip)
         return _serialize(trip)
     except Exception as e:
         log.exception("Erreur dans POST /api/trips: %s", e)
