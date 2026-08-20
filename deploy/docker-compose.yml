@@ -25,6 +25,7 @@ services:
     environment:
       DB_HOST: db
       DB_PORT: 5432
+      DB_SSL: "false"
     expose:
       - "8000"
     restart: unless-stopped
