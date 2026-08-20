@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 SECRET = os.environ["JWT_SECRET"]
 ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
 EXPIRE_MINUTES = int(os.environ.get("JWT_EXPIRE_MINUTES", 10080))
-FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "jibli-dz-aa340")
+FIREBASE_API_KEY = os.environ.get("FIREBASE_API_KEY", "AIzaSyDZP0PmPpIKA9efDEg8t0qYMzGMZDixuGc")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
@@ -42,16 +42,29 @@ def create_token(user: User) -> str:
 
 
 def verify_google_token(id_token_str: str) -> dict:
-    """Verify a Firebase/Google ID token and return its claims."""
+    """Verify a Firebase ID token via the Firebase REST API."""
+    import urllib.request
+    import json as _json
+
+    url = f"https://identitytoolkit.googleapis.com/v1/accounts:lookup?key={FIREBASE_API_KEY}"
+    payload = _json.dumps({"idToken": id_token_str}).encode()
+    req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
     try:
-        from google.oauth2 import id_token
-        from google.auth.transport import requests as grequests
-        return id_token.verify_firebase_token(
-            id_token_str, grequests.Request(), audience=FIREBASE_PROJECT_ID
-        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = _json.loads(resp.read())
     except Exception as e:
-        log.warning("Google token verification failed: %s", e)
+        log.warning("Firebase token lookup failed: %s", e)
         raise HTTPException(status_code=401, detail="Token Google invalide")
+
+    users = data.get("users", [])
+    if not users:
+        raise HTTPException(status_code=401, detail="Token Google invalide")
+    u = users[0]
+    return {
+        "uid": u.get("localId", ""),
+        "email": u.get("email", ""),
+        "name": u.get("displayName"),
+    }
 
 
 def get_current_user(token: str | None = Depends(oauth2_scheme)) -> User | None:

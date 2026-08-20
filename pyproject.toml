@@ -13,7 +13,6 @@ dependencies = [
     "godata",
     "apscheduler>=3.10",
     "slowapi>=0.1.9",
-    "google-auth>=2.0",
 ]
 
 [build-system]
