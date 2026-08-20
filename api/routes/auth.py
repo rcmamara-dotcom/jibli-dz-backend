@@ -1,11 +1,18 @@
 import logging
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from godata.repos import UserRepo
-from ..schemas import RegisterIn, LoginIn, TokenOut, ForgotPasswordIn, ResetPasswordIn
-from ..auth import hash_password, verify_password, create_token
+from ..schemas import (
+    RegisterIn, LoginIn, TokenOut, ForgotPasswordIn, ResetPasswordIn,
+    GoogleAuthIn, MeOut,
+)
+from ..auth import (
+    hash_password, verify_password, create_token, verify_google_token,
+    require_user,
+)
 from ..reset_tokens import generate as gen_reset_token, consume as consume_reset_token
 from ..scheduler import _send
 from ..limiter import limiter
+from godata.models import User
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -14,13 +21,20 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 @router.post("/register", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
 def register(body: RegisterIn) -> TokenOut:
     log.debug("POST /api/auth/register — email=%s", body.email)
+    if body.password != body.confirm_password:
+        raise HTTPException(status_code=422, detail="Les mots de passe ne correspondent pas")
+    if len(body.password) < 6:
+        raise HTTPException(status_code=422, detail="Le mot de passe doit faire au moins 6 caractères")
     try:
         existing = UserRepo.get_by_email(body.email)
-        log.debug("get_by_email result: %s", existing)
         if existing:
-            log.debug("Email already used: %s", body.email)
             raise HTTPException(status_code=400, detail="Cet e-mail est déjà utilisé")
-        user = UserRepo.create(body.email, hash_password(body.password))
+        user = UserRepo.create(
+            body.email,
+            hash_password(body.password),
+            name=body.name,
+            birth_date=body.birth_date,
+        )
         log.debug("User created: id=%s email=%s", user.id, user.email)
         return TokenOut(access_token=create_token(user))
     except HTTPException:
@@ -35,9 +49,7 @@ def login(body: LoginIn) -> TokenOut:
     log.debug("POST /api/auth/login — email=%s", body.email)
     try:
         user = UserRepo.get_by_email(body.email)
-        log.debug("get_by_email result: %s", user)
         if not user or not verify_password(body.password, user.password_hash):
-            log.debug("Auth failed for email=%s", body.email)
             raise HTTPException(status_code=401, detail="E-mail ou mot de passe incorrect")
         log.debug("Login OK: id=%s", user.id)
         return TokenOut(access_token=create_token(user))
@@ -48,11 +60,29 @@ def login(body: LoginIn) -> TokenOut:
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/google", response_model=TokenOut)
+def google_auth(body: GoogleAuthIn) -> TokenOut:
+    """Sign in or register via Google / Firebase ID token."""
+    claims = verify_google_token(body.id_token)
+    google_id = claims.get("uid") or claims.get("sub", "")
+    email = claims.get("email", "")
+    name = claims.get("name")
+    if not google_id or not email:
+        raise HTTPException(status_code=400, detail="Token Google incomplet")
+    user = UserRepo.get_or_create_by_google(google_id=google_id, email=email, name=name)
+    log.info("Google auth OK: user_id=%s email=%s", user.id, user.email)
+    return TokenOut(access_token=create_token(user))
+
+
+@router.get("/me", response_model=MeOut)
+def me(user: User = Depends(require_user)) -> MeOut:
+    return MeOut.model_validate(user)
+
+
 @router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit("3/hour")
 def forgot_password(request: Request, body: ForgotPasswordIn) -> None:
     user = UserRepo.get_by_email(body.email)
-    # Always return 204 to avoid email enumeration
     if not user:
         return
     token = gen_reset_token(body.email)

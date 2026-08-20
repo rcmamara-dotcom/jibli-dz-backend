@@ -16,6 +16,9 @@ def _validate_wa(v: str) -> str:
 class RegisterIn(BaseModel):
     email: EmailStr
     password: str
+    confirm_password: str
+    name: str | None = None
+    birth_date: date | None = None
 
 
 class LoginIn(BaseModel):
@@ -35,6 +38,21 @@ class ForgotPasswordIn(BaseModel):
 class ResetPasswordIn(BaseModel):
     token: str
     password: str
+
+
+class GoogleAuthIn(BaseModel):
+    id_token: str
+
+
+class MeOut(BaseModel):
+    id: int
+    email: str
+    name: str | None = None
+    birth_date: date | None = None
+    is_admin: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
 
 
 # ── Trip ──────────────────────────────────────────────────────────────────────

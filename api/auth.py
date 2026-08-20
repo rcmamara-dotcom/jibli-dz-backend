@@ -1,4 +1,5 @@
 import os
+import logging
 import bcrypt
 from datetime import datetime, timedelta, timezone
 from fastapi import Depends, HTTPException, status
@@ -7,9 +8,12 @@ from jose import JWTError, jwt
 from godata.repos import UserRepo
 from godata.models import User
 
+log = logging.getLogger(__name__)
+
 SECRET = os.environ["JWT_SECRET"]
 ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
 EXPIRE_MINUTES = int(os.environ.get("JWT_EXPIRE_MINUTES", 10080))
+FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "jibli-dz-aa340")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
@@ -25,10 +29,29 @@ def verify_password(plain: str, hashed: str) -> bool:
 def create_token(user: User) -> str:
     exp = datetime.now(timezone.utc) + timedelta(minutes=EXPIRE_MINUTES)
     return jwt.encode(
-        {"sub": str(user.id), "adm": bool(user.is_admin), "exp": exp},
+        {
+            "sub": str(user.id),
+            "adm": bool(user.is_admin),
+            "email": user.email,
+            "name": getattr(user, "name", None),
+            "exp": exp,
+        },
         SECRET,
         algorithm=ALGORITHM,
     )
+
+
+def verify_google_token(id_token_str: str) -> dict:
+    """Verify a Firebase/Google ID token and return its claims."""
+    try:
+        from google.oauth2 import id_token
+        from google.auth.transport import requests as grequests
+        return id_token.verify_firebase_token(
+            id_token_str, grequests.Request(), audience=FIREBASE_PROJECT_ID
+        )
+    except Exception as e:
+        log.warning("Google token verification failed: %s", e)
+        raise HTTPException(status_code=401, detail="Token Google invalide")
 
 
 def get_current_user(token: str | None = Depends(oauth2_scheme)) -> User | None:
