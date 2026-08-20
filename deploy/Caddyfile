@@ -1,17 +1,21 @@
+www.{$DOMAIN:localhost} {
+    redir https://{$DOMAIN:localhost}{uri} permanent
+}
+
 {$DOMAIN:localhost} {
 
-    # ── Frontend (fichiers statiques React) ──────────────────────────────────
+    # ── Frontend (fichiers statiques React) ────────────────────────────────────
     root * /var/www/html
     file_server
     # SPA fallback : toutes les routes inconnues → index.html
     try_files {path} /index.html
 
-    # ── Backend API ───────────────────────────────────────────────────────────
+    # ── Backend API ─────────────────────────────────────────────────────────────
     handle /api/* {
         reverse_proxy api:8000
     }
 
-    # ── Sécurité basique ─────────────────────────────────────────────────────
+    # ── Sécurité basique ─────────────────────────────────────────────────────────────
     header {
         X-Content-Type-Options nosniff
         X-Frame-Options DENY
@@ -19,6 +23,6 @@
         -Server
     }
 
-    # ── Compression ──────────────────────────────────────────────────────────
+    # ── Compression ────────────────────────────────────────────────────────────────
     encode gzip
 }
