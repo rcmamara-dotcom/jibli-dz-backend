@@ -1,14 +1,36 @@
 services:
 
+  # ── PostgreSQL local ────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-jiblidz}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # ── API FastAPI ─────────────────────────────────────────────────────────────
   api:
     build:
       context: ..
       dockerfile: Dockerfile
     env_file: .env
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
     expose:
       - "8000"
     restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
       interval: 30s
@@ -21,13 +43,13 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "443:443/udp"       # HTTP/3 (QUIC)
+      - "443:443/udp"
     environment:
       DOMAIN: ${DOMAIN:-localhost}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./frontend:/var/www/html:ro   # build Vite copié ici
-      - caddy_data:/data              # certificats Let's Encrypt
+      - ./frontend:/var/www/html:ro
+      - caddy_data:/data
       - caddy_config:/config
     restart: unless-stopped
     depends_on:
@@ -35,5 +57,6 @@ services:
         condition: service_healthy
 
 volumes:
+  postgres_data:
   caddy_data:
   caddy_config:
