@@ -4,15 +4,16 @@ www.{$DOMAIN:localhost} {
 
 {$DOMAIN:localhost} {
 
-    # ── Frontend (fichiers statiques React) ────────────────────────────────────
-    root * /var/www/html
-    file_server
-    # SPA fallback : toutes les routes inconnues → index.html
-    try_files {path} /index.html
-
-    # ── Backend API ─────────────────────────────────────────────────────────────
+    # ── Backend API (doit être avant le file_server) ──────────────────────────
     handle /api/* {
         reverse_proxy api:8000
+    }
+
+    # ── Frontend (fichiers statiques React) ────────────────────────────────────
+    handle {
+        root * /var/www/html
+        file_server
+        try_files {path} /index.html
     }
 
     # ── Sécurité basique ─────────────────────────────────────────────────────────────
