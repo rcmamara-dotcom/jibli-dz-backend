@@ -44,6 +44,12 @@ class GoogleAuthIn(BaseModel):
     id_token: str
 
 
+class ChangePasswordIn(BaseModel):
+    current_password: str
+    new_password: str
+    confirm_new_password: str
+
+
 class MeOut(BaseModel):
     id: int
     email: str

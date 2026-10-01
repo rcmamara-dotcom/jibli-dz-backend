@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from godata.repos import UserRepo
 from ..schemas import (
     RegisterIn, LoginIn, TokenOut, ForgotPasswordIn, ResetPasswordIn,
-    GoogleAuthIn, MeOut,
+    GoogleAuthIn, MeOut, ChangePasswordIn,
 )
 from ..auth import (
     hash_password, verify_password, create_token, verify_google_token,
@@ -112,6 +112,18 @@ def forgot_password(request: Request, body: ForgotPasswordIn) -> None:
     """
     _send(body.email, "🔑 Réinitialisation de ton mot de passe JIBLI DZ", html)
     log.info("Reset token généré pour %s", body.email)
+
+
+@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
+def change_password(body: ChangePasswordIn, user: User = Depends(require_user)) -> None:
+    if not verify_password(body.current_password, user.password_hash):
+        raise HTTPException(status_code=400, detail="Mot de passe actuel incorrect")
+    if body.new_password != body.confirm_new_password:
+        raise HTTPException(status_code=422, detail="Les mots de passe ne correspondent pas")
+    if len(body.new_password) < 6:
+        raise HTTPException(status_code=422, detail="Le mot de passe doit faire au moins 6 caractères")
+    UserRepo.update_password(user.id, hash_password(body.new_password))
+    log.info("Mot de passe changé pour user_id=%s", user.id)
 
 
 @router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT)
