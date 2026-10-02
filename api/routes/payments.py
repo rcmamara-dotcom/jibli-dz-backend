@@ -45,8 +45,8 @@ def create_checkout(request: Request, body: dict, user: User = Depends(require_u
                     "currency": "eur",
                     "unit_amount": PRICE_CENTS,
                     "product_data": {
-                        "name": f"Publication d'annonce — {'Trajet' if listing_type == 'trip' else 'Colis'} · Jibli DZ",
-                        "description": "Votre annonce sera publiée immédiatement après le paiement.",
+                        "name": f"Publication annonce {'Trajet' if listing_type == 'trip' else 'Colis'} - Jibli DZ",
+                        "description": "Votre annonce sera publiee immediatement apres le paiement.",
                     },
                 },
                 "quantity": 1,
