@@ -12,10 +12,10 @@ os.environ["SMTP_HOST"] = ""
 os.environ["RATELIMIT_ENABLED"] = "false"   # disable slowapi in tests
 
 from peewee import SqliteDatabase
-from godata.models import User, Trip, Parcel, Review
+from godata.models import User, Trip, Parcel, Review, Subscription
 import godata.db as _godata_db
 
-MODELS = [User, Trip, Parcel, Review]
+MODELS = [User, Trip, Parcel, Review, Subscription]
 
 
 @pytest.fixture(autouse=True)
@@ -68,9 +68,15 @@ def client(fresh_db):
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def register(client, email="user@test.com", password="secret123"):
-    r = client.post("/api/auth/register", json={"email": email, "password": password})
+def register(client, email="user@test.com", password="secret123", verified=True):
+    r = client.post("/api/auth/register", json={
+        "email": email, "phone": "+33612345678",
+        "password": password, "confirm_password": password,
+    })
     assert r.status_code == 201, r.text
+    if verified:
+        from godata.repos import UserRepo
+        UserRepo.set_email_verified(UserRepo.get_by_email(email).id)
     return r.json()["access_token"]
 
 

@@ -84,6 +84,13 @@ def require_user(user: User | None = Depends(get_current_user)) -> User:
     return user
 
 
+def require_verified(user: User = Depends(require_user)) -> User:
+    """Publier ou payer demande un e-mail vérifié."""
+    if not user.email_verified:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Vérifie ton adresse e-mail avant de continuer")
+    return user
+
+
 def require_admin(user: User = Depends(require_user)) -> User:
     if not user.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès réservé aux administrateurs")

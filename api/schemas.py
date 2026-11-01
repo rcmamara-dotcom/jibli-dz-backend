@@ -12,14 +12,27 @@ def _validate_wa(v: str) -> str:
     return v
 
 
+def _validate_phone(v: str) -> str:
+    v = v.replace(" ", "").replace("-", "").replace(".", "")
+    if not _WA_RE.match(v):
+        raise ValueError("Numéro de téléphone invalide (format international : +33612345678)")
+    return v
+
+
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
 class RegisterIn(BaseModel):
     email: EmailStr
+    phone: str
     password: str
     confirm_password: str
     name: str | None = None
     birth_date: date | None = None
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, v: str) -> str:
+        return _validate_phone(v)
 
 
 class LoginIn(BaseModel):
@@ -54,12 +67,38 @@ class ChangePasswordIn(BaseModel):
 class MeOut(BaseModel):
     id: int
     email: str
+    email_verified: bool = False
+    phone: str | None = None
     name: str | None = None
     birth_date: date | None = None
+    has_password: bool = True   # False pour un compte créé via Google
     is_admin: bool
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class UpdateMeIn(BaseModel):
+    """Seuls les champs envoyés sont modifiés ; birth_date: null l'efface."""
+    name: str | None = None
+    phone: str | None = None
+    birth_date: date | None = None
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, v: str | None) -> str | None:
+        if v is None:
+            raise ValueError("Le téléphone est obligatoire")
+        return _validate_phone(v)
+
+
+class VerifyEmailIn(BaseModel):
+    code: str
+
+
+class ChangeEmailIn(BaseModel):
+    new_email: EmailStr
+    password: str
 
 
 # ── Trip ──────────────────────────────────────────────────────────────────────

@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from godata.models import User
 from godata.repos import SubscriptionRepo, TripRepo, ParcelRepo
 
-from ..auth import require_user
+from ..auth import require_user, require_verified
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/subscriptions", tags=["subscriptions"])
@@ -63,7 +63,7 @@ def get_my_subscription(user: User = Depends(require_user)) -> dict:
 
 
 @router.post("/create-checkout")
-def create_subscription_checkout(body: dict, user: User = Depends(require_user)) -> dict:
+def create_subscription_checkout(body: dict, user: User = Depends(require_verified)) -> dict:
     plan = body.get("plan")
     if plan not in PRICE_IDS:
         raise HTTPException(status_code=400, detail="Plan invalide")
