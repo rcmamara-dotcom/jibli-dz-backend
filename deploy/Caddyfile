@@ -14,6 +14,8 @@ www.{$DOMAIN:localhost} {
     @hidden {
         path_regexp /\.
         not path /.well-known/*
+        not path /sitemap.xml
+        not path /robots.txt
     }
     # handle (et non respond seul) : sinon le bloc du site, prioritaire, renvoie index.html
     handle @hidden {
