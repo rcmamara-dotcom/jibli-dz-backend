@@ -4,8 +4,8 @@ from godata.models import User
 from .conftest import register, auth_headers, TRIP_PAYLOAD, PARCEL_PAYLOAD
 
 
-def _make_admin(email: str):
-    User.update(is_admin=True).where(User.email == email).execute()
+def _make_admin(email: str, role: str = "admin"):
+    User.update(role=role, is_admin=(role == "admin")).where(User.email == email).execute()
 
 
 def test_admin_stats_forbidden_for_user(client):

@@ -43,7 +43,7 @@ def client(fresh_db):
     from fastapi.middleware.cors import CORSMiddleware
     from slowapi import _rate_limit_exceeded_handler
     from slowapi.errors import RateLimitExceeded
-    from api.routes import auth, trips, parcels, reviews, admin, shipments
+    from api.routes import auth, trips, parcels, reviews, admin, shipments, payments
     from api.limiter import limiter
 
     app = FastAPI()
@@ -56,6 +56,7 @@ def client(fresh_db):
     app.include_router(reviews.router)
     app.include_router(admin.router)
     app.include_router(shipments.router)
+    app.include_router(payments.router)
 
     @app.middleware("http")
     async def db_middleware(request: Request, call_next):

@@ -72,6 +72,7 @@ class MeOut(BaseModel):
     name: str | None = None
     birth_date: date | None = None
     has_password: bool = True   # False pour un compte créé via Google
+    role: str = "user"
     is_admin: bool
     created_at: datetime
 
@@ -157,9 +158,15 @@ class ParcelIn(BaseModel):
 class UserAdminOut(BaseModel):
     id: int
     email: str
+    name: str | None = None
+    role: str = "user"
     is_admin: bool
     created_at: datetime
     model_config = {"from_attributes": True}
+
+
+class RoleIn(BaseModel):
+    role: str
 
 
 class AdminStatsOut(BaseModel):

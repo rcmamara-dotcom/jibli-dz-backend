@@ -1,9 +1,9 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status
-from godata.models import User, Trip, Parcel, Review
+from godata.models import ROLES, User, Trip, Parcel, Review
 from godata.repos import UserRepo, TripRepo, ParcelRepo, ReviewRepo
-from ..schemas import UserAdminOut, AdminStatsOut, TripOut, ParcelOut, ReviewOut
-from ..auth import require_admin
+from ..schemas import UserAdminOut, AdminStatsOut, RoleIn, TripOut, ParcelOut, ReviewOut
+from ..permissions import require
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 # ── Stats ─────────────────────────────────────────────────────────────────────
 
 @router.get("/stats", response_model=AdminStatsOut)
-def stats(_: User = Depends(require_admin)) -> AdminStatsOut:
+def stats(_: User = Depends(require("moderate"))) -> AdminStatsOut:
     return AdminStatsOut(
         users=User.select().count(),
         trips=Trip.select().count(),
@@ -24,16 +24,28 @@ def stats(_: User = Depends(require_admin)) -> AdminStatsOut:
 # ── Users ─────────────────────────────────────────────────────────────────────
 
 @router.get("/users", response_model=list[UserAdminOut])
-def list_users(_: User = Depends(require_admin)) -> list[UserAdminOut]:
+def list_users(_: User = Depends(require("manage_users"))) -> list[UserAdminOut]:
     return [UserAdminOut.model_validate(u) for u in UserRepo.list_all()]
 
 
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user(user_id: int, me: User = Depends(require_admin)) -> None:
+def delete_user(user_id: int, me: User = Depends(require("manage_users"))) -> None:
     if user_id == me.id:
         raise HTTPException(status_code=400, detail="Impossible de supprimer votre propre compte")
     if not UserRepo.force_delete(user_id):
         raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+
+
+@router.patch("/users/{user_id}/role", response_model=UserAdminOut)
+def set_role(user_id: int, body: RoleIn, me: User = Depends(require("manage_users"))) -> UserAdminOut:
+    if body.role not in ROLES:
+        raise HTTPException(status_code=422, detail="Rôle inconnu")
+    if user_id == me.id:
+        raise HTTPException(status_code=400, detail="Tu ne peux pas changer ton propre rôle")
+    if not UserRepo.set_role(user_id, body.role):
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+    log.info("Rôle de user_id=%s → %s (par admin %s)", user_id, body.role, me.id)
+    return UserAdminOut.model_validate(UserRepo.get_by_id(user_id))
 
 
 # ── Trips ─────────────────────────────────────────────────────────────────────
@@ -47,12 +59,12 @@ def _trip_out(t: Trip) -> TripOut:
 
 
 @router.get("/trips", response_model=list[TripOut])
-def list_trips(_: User = Depends(require_admin)) -> list[TripOut]:
+def list_trips(_: User = Depends(require("moderate"))) -> list[TripOut]:
     return [_trip_out(t) for t in TripRepo.list_all()]
 
 
 @router.delete("/trips/{trip_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_trip(trip_id: int, _: User = Depends(require_admin)) -> None:
+def delete_trip(trip_id: int, _: User = Depends(require("moderate"))) -> None:
     if not TripRepo.force_delete(trip_id):
         raise HTTPException(status_code=404, detail="Trajet introuvable")
 
@@ -68,12 +80,12 @@ def _parcel_out(p: Parcel) -> ParcelOut:
 
 
 @router.get("/parcels", response_model=list[ParcelOut])
-def list_parcels(_: User = Depends(require_admin)) -> list[ParcelOut]:
+def list_parcels(_: User = Depends(require("moderate"))) -> list[ParcelOut]:
     return [_parcel_out(p) for p in ParcelRepo.list_all()]
 
 
 @router.delete("/parcels/{parcel_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_parcel(parcel_id: int, _: User = Depends(require_admin)) -> None:
+def delete_parcel(parcel_id: int, _: User = Depends(require("moderate"))) -> None:
     if not ParcelRepo.force_delete(parcel_id):
         raise HTTPException(status_code=404, detail="Colis introuvable")
 
@@ -89,11 +101,11 @@ def _review_out(r: Review) -> ReviewOut:
 
 
 @router.get("/reviews", response_model=list[ReviewOut])
-def list_reviews(_: User = Depends(require_admin)) -> list[ReviewOut]:
+def list_reviews(_: User = Depends(require("moderate"))) -> list[ReviewOut]:
     return [_review_out(r) for r in ReviewRepo.list_all()]
 
 
 @router.delete("/reviews/{review_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_review(review_id: int, _: User = Depends(require_admin)) -> None:
+def delete_review(review_id: int, _: User = Depends(require("moderate"))) -> None:
     if not ReviewRepo.force_delete(review_id):
         raise HTTPException(status_code=404, detail="Avis introuvable")

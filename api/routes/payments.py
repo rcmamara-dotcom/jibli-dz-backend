@@ -8,6 +8,7 @@ from godata.models import User
 from godata.repos import TripRepo, ParcelRepo
 
 from ..auth import require_user
+from ..permissions import can
 from ..schemas import TripIn, ParcelIn
 from .subscriptions import get_user_subscription_info
 
@@ -35,10 +36,11 @@ def create_checkout(request: Request, body: dict, user: User = Depends(require_u
     except Exception as e:
         raise HTTPException(status_code=422, detail=str(e))
 
-    # If user has active subscription with remaining quota, publish directly
+    # Publication directe : rôle avec publication gratuite, ou abonnement avec quota restant
     sub_info = get_user_subscription_info(user.id)
-    if sub_info["plan"] and sub_info["status"] in ("active", "trialing"):
-        remaining = sub_info.get("remaining")
+    free = can(user, "publish_free")
+    if free or (sub_info["plan"] and sub_info["status"] in ("active", "trialing")):
+        remaining = None if free else sub_info.get("remaining")
         if remaining is None or remaining > 0:
             data = body.get("data", {})
             try:
@@ -50,7 +52,7 @@ def create_checkout(request: Request, body: dict, user: User = Depends(require_u
                     ParcelRepo.create(owner_id=user.id, **parcel_data.model_dump())
             except Exception as e:
                 raise HTTPException(status_code=422, detail=str(e))
-            log.info("Publication via subscription: user=%s plan=%s type=%s", user.id, sub_info["plan"], listing_type)
+            log.info("Publication directe: user=%s role=%s plan=%s type=%s", user.id, user.role, sub_info["plan"], listing_type)
             return {"published": True, "checkout_url": None}
 
     # Stripe metadata is limited to 500 chars per value
