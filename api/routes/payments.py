@@ -9,19 +9,22 @@ from godata.repos import TripRepo, ParcelRepo
 
 from ..auth import require_user
 from ..permissions import can
+from ..stripe_webhook import verify_stripe_event
 from ..schemas import TripIn, ParcelIn
+from ..limiter import limiter
+from pydantic import ValidationError
 from .subscriptions import get_user_subscription_info
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/payments", tags=["payments"])
 
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY", "")
-STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 PUBLIC_URL = os.environ.get("PUBLIC_URL", "https://jiblidz.com")
 PRICE_CENTS = 300  # 3€
 
 
 @router.post("/create-checkout")
+@limiter.limit("20/hour")
 def create_checkout(request: Request, body: dict, user: User = Depends(require_user)) -> dict:
     listing_type = body.get("type")  # "trip" or "parcel"
     if listing_type not in ("trip", "parcel"):
@@ -33,8 +36,8 @@ def create_checkout(request: Request, body: dict, user: User = Depends(require_u
             TripIn(**body.get("data", {}))
         else:
             ParcelIn(**body.get("data", {}))
-    except Exception as e:
-        raise HTTPException(status_code=422, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=e.errors()[0]["msg"])
 
     # Publication directe : rôle avec publication gratuite, ou abonnement avec quota restant
     sub_info = get_user_subscription_info(user.id)
@@ -50,13 +53,15 @@ def create_checkout(request: Request, body: dict, user: User = Depends(require_u
                 else:
                     parcel_data = ParcelIn(**data)
                     ParcelRepo.create(owner_id=user.id, **parcel_data.model_dump())
-            except Exception as e:
-                raise HTTPException(status_code=422, detail=str(e))
+            except Exception:
+                log.exception("Publication directe impossible: user=%s", user.id)
+                raise HTTPException(status_code=500, detail="Publication impossible, réessaie plus tard")
             log.info("Publication directe: user=%s role=%s plan=%s type=%s", user.id, user.role, sub_info["plan"], listing_type)
             return {"published": True, "checkout_url": None}
 
-    # Stripe metadata is limited to 500 chars per value
+    # Stripe limite chaque valeur de métadonnée à 500 caractères : on découpe le JSON
     data_json = json.dumps(body.get("data", {}), ensure_ascii=False)
+    chunks = {f"data{i}": data_json[i * 500:(i + 1) * 500] for i in range((len(data_json) + 499) // 500)}
 
     try:
         session = stripe.checkout.Session.create(
@@ -77,7 +82,7 @@ def create_checkout(request: Request, body: dict, user: User = Depends(require_u
             metadata={
                 "type": listing_type,
                 "user_id": str(user.id),
-                "data": data_json[:500],  # Stripe metadata value limit
+                **chunks,
             },
             customer_email=user.email,
         )
@@ -90,17 +95,7 @@ def create_checkout(request: Request, body: dict, user: User = Depends(require_u
 
 @router.post("/webhook", status_code=status.HTTP_200_OK)
 async def stripe_webhook(request: Request) -> dict:
-    payload = await request.body()
-    sig_header = request.headers.get("stripe-signature", "")
-
-    try:
-        if STRIPE_WEBHOOK_SECRET:
-            event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
-        else:
-            event = stripe.Event.construct_from(json.loads(payload), stripe.api_key)
-    except (ValueError, stripe.SignatureVerificationError) as e:
-        log.warning("Webhook signature invalid: %s", e)
-        raise HTTPException(status_code=400, detail="Invalid signature")
+    event = verify_stripe_event(await request.body(), request.headers.get("stripe-signature", ""))
 
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
@@ -113,7 +108,8 @@ def _handle_payment_success(session: dict) -> None:
     meta = session.get("metadata", {})
     listing_type = meta.get("type")
     user_id = int(meta.get("user_id", 0))
-    data_json = meta.get("data", "{}")
+    # "data" seul : sessions créées avant le découpage
+    data_json = meta.get("data") or "".join(meta.get(f"data{i}", "") for i in range(50)) or "{}"
 
     try:
         data = json.loads(data_json)

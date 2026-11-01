@@ -47,7 +47,7 @@ def list_trips(
         return [_serialize(t, ratings) for t in page_trips]
     except Exception as e:
         log.exception("Erreur dans GET /api/trips: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Erreur interne")
 
 
 @router.post("", response_model=TripOut, status_code=status.HTTP_201_CREATED)
@@ -62,7 +62,7 @@ def create_trip(request: Request, body: TripIn, bg: BackgroundTasks, user: User 
         return _serialize(trip)
     except Exception as e:
         log.exception("Erreur dans POST /api/trips: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Erreur interne")
 
 
 @router.delete("/{trip_id}", status_code=status.HTTP_204_NO_CONTENT)

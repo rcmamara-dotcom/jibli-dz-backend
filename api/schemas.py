@@ -1,6 +1,6 @@
 import re
 from datetime import date, datetime
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 _WA_RE = re.compile(r"^\+\d{7,15}$")
 
@@ -24,9 +24,9 @@ def _validate_phone(v: str) -> str:
 class RegisterIn(BaseModel):
     email: EmailStr
     phone: str
-    password: str
-    confirm_password: str
-    name: str | None = None
+    password: str = Field(max_length=128)
+    confirm_password: str = Field(max_length=128)
+    name: str | None = Field(default=None, max_length=100)
     birth_date: date | None = None
 
     @field_validator("phone")
@@ -37,7 +37,7 @@ class RegisterIn(BaseModel):
 
 class LoginIn(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(max_length=128)
 
 
 class TokenOut(BaseModel):
@@ -81,7 +81,7 @@ class MeOut(BaseModel):
 
 class UpdateMeIn(BaseModel):
     """Seuls les champs envoyés sont modifiés ; birth_date: null l'efface."""
-    name: str | None = None
+    name: str | None = Field(default=None, max_length=100)
     phone: str | None = None
     birth_date: date | None = None
 
@@ -105,13 +105,13 @@ class ChangeEmailIn(BaseModel):
 # ── Trip ──────────────────────────────────────────────────────────────────────
 
 class TripIn(BaseModel):
-    name: str
-    from_city: str
-    to_city: str
+    name: str = Field(min_length=1, max_length=100)
+    from_city: str = Field(min_length=1, max_length=100)
+    to_city: str = Field(min_length=1, max_length=100)
     date: date
-    capacity: str
-    weight: float | None = None
-    cap_desc: str | None = None
+    capacity: str = Field(min_length=1, max_length=10)
+    weight: float | None = Field(default=None, ge=0, le=1000)
+    cap_desc: str | None = Field(default=None, max_length=1000)
     wa: str
 
     @field_validator("wa")
@@ -141,10 +141,10 @@ class TripOut(BaseModel):
 # ── Parcel ────────────────────────────────────────────────────────────────────
 
 class ParcelIn(BaseModel):
-    from_city: str
-    to_city: str
-    description: str
-    budget: float = 0
+    from_city: str = Field(min_length=1, max_length=100)
+    to_city: str = Field(min_length=1, max_length=100)
+    description: str = Field(min_length=1, max_length=1000)
+    budget: float = Field(default=0, ge=0, le=100_000)
     wa: str
 
     @field_validator("wa")
@@ -180,7 +180,7 @@ class AdminStatsOut(BaseModel):
 
 class ReviewIn(BaseModel):
     rating: int       # 1–5
-    comment: str | None = None
+    comment: str | None = Field(default=None, max_length=1000)
 
 
 class ReviewOut(BaseModel):

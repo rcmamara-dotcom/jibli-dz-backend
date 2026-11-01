@@ -1,9 +1,10 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from godata.repos import TripRepo, ReviewRepo
 from godata.models import User, Review
 from ..schemas import ReviewIn, ReviewOut
 from ..auth import require_user
+from ..limiter import limiter
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/trips", tags=["reviews"])
@@ -28,7 +29,8 @@ def list_reviews(trip_id: int) -> list[ReviewOut]:
 
 
 @router.post("/{trip_id}/reviews", response_model=ReviewOut, status_code=status.HTTP_201_CREATED)
-def add_review(trip_id: int, body: ReviewIn, user: User = Depends(require_user)) -> ReviewOut:
+@limiter.limit("10/hour")
+def add_review(request: Request, trip_id: int, body: ReviewIn, user: User = Depends(require_user)) -> ReviewOut:
     log.debug("POST /api/trips/%s/reviews — user_id=%s rating=%s", trip_id, user.id, body.rating)
 
     if not 1 <= body.rating <= 5:

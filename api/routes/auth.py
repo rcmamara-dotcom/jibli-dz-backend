@@ -18,6 +18,7 @@ from godata.models import User
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+MIN_PASSWORD = 8
 
 
 def _send_verification_code(user: User) -> None:
@@ -45,12 +46,13 @@ def _me(user: User) -> MeOut:
 
 
 @router.post("/register", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
-def register(body: RegisterIn) -> TokenOut:
+@limiter.limit("10/hour")
+def register(request: Request, body: RegisterIn) -> TokenOut:
     log.debug("POST /api/auth/register — email=%s", body.email)
     if body.password != body.confirm_password:
         raise HTTPException(status_code=422, detail="Les mots de passe ne correspondent pas")
-    if len(body.password) < 6:
-        raise HTTPException(status_code=422, detail="Le mot de passe doit faire au moins 6 caractères")
+    if len(body.password) < MIN_PASSWORD:
+        raise HTTPException(status_code=422, detail="Le mot de passe doit faire au moins 8 caractères")
     try:
         existing = UserRepo.get_by_email(body.email)
         if existing:
@@ -69,11 +71,12 @@ def register(body: RegisterIn) -> TokenOut:
         raise
     except Exception as e:
         log.exception("Erreur inattendue dans /register: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Erreur interne")
 
 
 @router.post("/login", response_model=TokenOut)
-def login(body: LoginIn) -> TokenOut:
+@limiter.limit("10/minute;50/hour")
+def login(request: Request, body: LoginIn) -> TokenOut:
     log.debug("POST /api/auth/login — email=%s", body.email)
     try:
         user = UserRepo.get_by_email(body.email)
@@ -85,7 +88,7 @@ def login(body: LoginIn) -> TokenOut:
         raise
     except Exception as e:
         log.exception("Erreur inattendue dans /login: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Erreur interne")
 
 
 @router.post("/google", response_model=TokenOut)
@@ -185,26 +188,28 @@ def forgot_password(request: Request, body: ForgotPasswordIn) -> None:
 
 
 @router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
-def change_password(body: ChangePasswordIn, user: User = Depends(require_user)) -> None:
+@limiter.limit("10/hour")
+def change_password(request: Request, body: ChangePasswordIn, user: User = Depends(require_user)) -> None:
     if not verify_password(body.current_password, user.password_hash):
         raise HTTPException(status_code=400, detail="Mot de passe actuel incorrect")
     if body.new_password != body.confirm_new_password:
         raise HTTPException(status_code=422, detail="Les mots de passe ne correspondent pas")
-    if len(body.new_password) < 6:
-        raise HTTPException(status_code=422, detail="Le mot de passe doit faire au moins 6 caractères")
+    if len(body.new_password) < MIN_PASSWORD:
+        raise HTTPException(status_code=422, detail="Le mot de passe doit faire au moins 8 caractères")
     UserRepo.update_password(user.id, hash_password(body.new_password))
     log.info("Mot de passe changé pour user_id=%s", user.id)
 
 
 @router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT)
-def reset_password(body: ResetPasswordIn) -> None:
+@limiter.limit("10/hour")
+def reset_password(request: Request, body: ResetPasswordIn) -> None:
     email = consume_reset_token(body.token)
     if not email:
         raise HTTPException(status_code=400, detail="Lien invalide ou expiré")
     user = UserRepo.get_by_email(email)
     if not user:
         raise HTTPException(status_code=400, detail="Utilisateur introuvable")
-    if len(body.password) < 6:
-        raise HTTPException(status_code=422, detail="Le mot de passe doit faire au moins 6 caractères")
+    if len(body.password) < MIN_PASSWORD:
+        raise HTTPException(status_code=422, detail="Le mot de passe doit faire au moins 8 caractères")
     UserRepo.update_password(user.id, hash_password(body.password))
     log.info("Mot de passe mis à jour pour user_id=%s", user.id)

@@ -1,4 +1,5 @@
 import logging
+from html import escape
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from godata.models import User, Shipment, SHIPMENT_STEPS, SHIPMENT_CANCELLED
 from godata.repos import ShipmentRepo, TripRepo, UserRepo
@@ -52,6 +53,7 @@ def _notify(shipment: Shipment, to_user_id: int) -> None:
     if not user:
         return
     label = STEP_LABELS.get(shipment.status, shipment.status)
+    route = escape(f"{shipment.from_city} → {shipment.to_city}")
     html = f"""
     <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px">
       <div style="background:#0f5c32;border-radius:12px;padding:20px 24px;color:white;margin-bottom:24px">
@@ -59,7 +61,7 @@ def _notify(shipment: Shipment, to_user_id: int) -> None:
       </div>
       <h2 style="color:#111827">📍 Suivi de ton envoi</h2>
       <p style="color:#6b7280;line-height:1.6">
-        Ton envoi <strong>{shipment.from_city} → {shipment.to_city}</strong> est passé à l'étape :
+        Ton envoi <strong>{route}</strong> est passé à l'étape :
       </p>
       <p style="font-size:20px;font-weight:700;color:#0f5c32">{label}</p>
       <p style="color:#6b7280;font-size:13px">Retrouve toutes les étapes dans « Mes envois » sur JIBLI DZ.</p>

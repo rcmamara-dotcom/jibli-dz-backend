@@ -38,7 +38,7 @@ def list_parcels(
         return [_serialize(p) for p in page_parcels]
     except Exception as e:
         log.exception("Erreur dans GET /api/parcels: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Erreur interne")
 
 
 @router.post("", response_model=ParcelOut, status_code=status.HTTP_201_CREATED)
@@ -52,7 +52,7 @@ def create_parcel(request: Request, body: ParcelIn, user: User = Depends(require
         return _serialize(parcel)
     except Exception as e:
         log.exception("Erreur dans POST /api/parcels: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Erreur interne")
 
 
 @router.delete("/{parcel_id}", status_code=status.HTTP_204_NO_CONTENT)

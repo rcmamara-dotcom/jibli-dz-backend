@@ -1,6 +1,7 @@
 import os
 import logging
 import smtplib
+from html import escape
 import ssl
 from datetime import date, timedelta
 from email.mime.multipart import MIMEMultipart
@@ -33,7 +34,7 @@ def _send(to: str, subject: str, html: str) -> None:
         return
 
     msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
+    msg["Subject"] = " ".join(subject.split())  # pas de retour à la ligne (injection d'en-têtes)
     msg["From"] = cfg["from"]
     msg["To"] = to
     msg.attach(MIMEText(html, "html", "utf-8"))
@@ -64,7 +65,7 @@ def _warning_html(trip) -> str:
       </div>
       <h2 style="color:#111827">⚠️ Votre trajet expire demain</h2>
       <p style="color:#6b7280;line-height:1.6">
-        Votre annonce de trajet <strong>{trip.from_city} → {trip.to_city}</strong>
+        Votre annonce de trajet <strong>{escape(trip.from_city)} → {escape(trip.to_city)}</strong>
         prévue le <strong>{travel_date}</strong> sera automatiquement supprimée demain soir.
       </p>
       <div style="background:#fde68a;border-radius:10px;padding:16px;margin:20px 0;color:#92400e">
@@ -87,7 +88,7 @@ def _deleted_html(trip) -> str:
       </div>
       <h2 style="color:#111827">🗑 Votre trajet a été supprimé</h2>
       <p style="color:#6b7280;line-height:1.6">
-        Votre annonce de trajet <strong>{trip.from_city} → {trip.to_city}</strong>
+        Votre annonce de trajet <strong>{escape(trip.from_city)} → {escape(trip.to_city)}</strong>
         du <strong>{travel_date}</strong> a été automatiquement supprimée car la date est passée.
       </p>
       <p style="color:#6b7280;line-height:1.6">
@@ -112,12 +113,12 @@ def _match_html(trip, parcel) -> str:
       <h2 style="color:#111827">🎉 Un voyageur correspond à votre colis !</h2>
       <p style="color:#6b7280;line-height:1.6">
         Bonne nouvelle — un voyageur vient de publier un trajet
-        <strong>{trip.from_city} → {trip.to_city}</strong>
+        <strong>{escape(trip.from_city)} → {escape(trip.to_city)}</strong>
         prévu le <strong>{travel_date}</strong>.
-        Votre colis (<em>{parcel.description}</em>) pourrait lui être confié.
+        Votre colis (<em>{escape(parcel.description)}</em>) pourrait lui être confié.
       </p>
       <div style="background:#d1fae5;border-radius:10px;padding:16px;margin:20px 0;color:#065f46">
-        Contactez <strong>{trip.name}</strong> via WhatsApp pour vous mettre d'accord.
+        Contactez <strong>{escape(trip.name)}</strong> via WhatsApp pour vous mettre d'accord.
       </div>
       <p style="color:#6b7280;font-size:13px;margin-top:32px">
         Cet e-mail a été envoyé automatiquement par JIBLI DZ · France ⇄ Algérie

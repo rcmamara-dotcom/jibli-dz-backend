@@ -11,6 +11,9 @@ from godata.models import User
 log = logging.getLogger(__name__)
 
 SECRET = os.environ["JWT_SECRET"]
+if len(SECRET) < 32 or SECRET == "change-me":
+    # Secret devinable = n'importe qui peut fabriquer un jeton admin
+    log.critical("JWT_SECRET trop faible : mets 32 caractères aléatoires min (openssl rand -hex 32)")
 ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
 EXPIRE_MINUTES = int(os.environ.get("JWT_EXPIRE_MINUTES", 10080))
 FIREBASE_API_KEY = os.environ.get("FIREBASE_API_KEY", "AIzaSyDZP0PmPpIKA9efDEg8t0qYMzGMZDixuGc")

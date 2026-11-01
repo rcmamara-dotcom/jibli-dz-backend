@@ -8,12 +8,12 @@ from godata.models import User
 from godata.repos import SubscriptionRepo, TripRepo, ParcelRepo
 
 from ..auth import require_user
+from ..stripe_webhook import verify_stripe_event
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/subscriptions", tags=["subscriptions"])
 
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY", "")
-STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 PUBLIC_URL = os.environ.get("PUBLIC_URL", "https://jiblidz.com")
 
 # Stripe Price IDs — set in environment
@@ -80,6 +80,8 @@ def create_subscription_checkout(body: dict, user: User = Depends(require_user))
             cancel_url=f"{PUBLIC_URL}/?subscription=cancelled",
             customer_email=user.email,
             metadata={"user_id": str(user.id), "plan": plan},
+            # les métadonnées de la session ne passent pas à l'abonnement : le webhook en a besoin
+            subscription_data={"metadata": {"user_id": str(user.id), "plan": plan}},
         )
         return {"checkout_url": session.url}
     except stripe.StripeError as e:
@@ -105,18 +107,7 @@ def customer_portal(user: User = Depends(require_user)) -> dict:
 
 @router.post("/webhook", status_code=status.HTTP_200_OK)
 async def subscription_webhook(request: Request) -> dict:
-    payload = await request.body()
-    sig_header = request.headers.get("stripe-signature", "")
-
-    try:
-        if STRIPE_WEBHOOK_SECRET:
-            event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
-        else:
-            import json
-            event = stripe.Event.construct_from(json.loads(payload), stripe.api_key)
-    except (ValueError, stripe.SignatureVerificationError) as e:
-        log.warning("Subscription webhook signature invalid: %s", e)
-        raise HTTPException(status_code=400, detail="Invalid signature")
+    event = verify_stripe_event(await request.body(), request.headers.get("stripe-signature", ""))
 
     event_type = event["type"]
     log.info("Subscription webhook event: %s", event_type)
@@ -141,8 +132,10 @@ def _handle_subscription_upsert(sub: dict) -> None:
     user_id = int(user_id_str)
     plan = sub.get("metadata", {}).get("plan", "starter")
 
-    period_start = datetime.fromtimestamp(sub["current_period_start"], tz=timezone.utc)
-    period_end = datetime.fromtimestamp(sub["current_period_end"], tz=timezone.utc)
+    # Depuis l'API Stripe 2025-03 la période est sur l'item, plus sur l'abonnement
+    item = (sub.get("items", {}).get("data") or [{}])[0]
+    period_start = datetime.fromtimestamp(sub.get("current_period_start") or item["current_period_start"], tz=timezone.utc)
+    period_end = datetime.fromtimestamp(sub.get("current_period_end") or item["current_period_end"], tz=timezone.utc)
 
     SubscriptionRepo.upsert(
         user_id=user_id,
