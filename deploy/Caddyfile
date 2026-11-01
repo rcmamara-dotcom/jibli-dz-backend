@@ -4,8 +4,25 @@ www.{$DOMAIN:localhost} {
 
 {$DOMAIN:localhost} {
 
+    # ── Journaux d'accès (docker compose logs caddy) ───────────────────────────
+    log {
+        output stdout
+        format json
+    }
+
+    # ── Fichiers cachés (.env, .git…) : jamais servis ──────────────────────────
+    @hidden {
+        path */.*
+        not path /.well-known/*
+    }
+    respond @hidden 404
+
     # ── Backend API (doit être avant le file_server) ──────────────────────────
     handle /api/* {
+        # aucune route n'attend plus que quelques Ko : bloque les gros envois
+        request_body {
+            max_size 1MB
+        }
         reverse_proxy api:8000
     }
 
@@ -16,12 +33,21 @@ www.{$DOMAIN:localhost} {
         try_files {path} /index.html
     }
 
-    # ── Sécurité basique ─────────────────────────────────────────────────────────────
+    # ── En-têtes de sécurité ─────────────────────────────────────────────────────
     header {
+        # HTTPS obligatoire pendant 1 an (pas de preload : réversible)
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
         X-Content-Type-Options nosniff
         X-Frame-Options DENY
         Referrer-Policy strict-origin-when-cross-origin
+        Permissions-Policy "camera=(), microphone=(), geolocation=(), usb=(), payment=()"
+        # allow-popups : la connexion Google (Firebase) passe par une popup
+        Cross-Origin-Opener-Policy same-origin-allow-popups
+        # CSP sans script-src : AdSense et Google Sign-In chargent des scripts de
+        # nombreux domaines Google qui changent ; on verrouille le reste.
+        Content-Security-Policy "frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
         -Server
+        -X-Powered-By
     }
 
     # ── Compression ────────────────────────────────────────────────────────────────

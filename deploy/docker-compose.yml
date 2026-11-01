@@ -9,6 +9,8 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
@@ -28,6 +30,8 @@ services:
       DB_SSL: "false"
     expose:
       - "8000"
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
     depends_on:
       db:
@@ -52,6 +56,8 @@ services:
       - ./frontend:/var/www/html:ro
       - caddy_data:/data
       - caddy_config:/config
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
     depends_on:
       api:

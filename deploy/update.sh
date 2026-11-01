@@ -10,6 +10,8 @@ DEPLOY_DIR="/opt/jibli-dz"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "▶ JIBLI DZ — mise à jour"
+# le .env contient les mots de passe (SMTP, Stripe, base) : lisible par root uniquement
+chmod 600 "$SCRIPT_DIR/.env"
 
 # ── Backend ──────────────────────────────────────────────────────────────────
 echo "→ Pull backend..."

@@ -16,6 +16,13 @@ RUN uv pip install --system --no-cache .
 
 COPY api/ ./api/
 
+# L'API ne tourne pas en root dans le conteneur
+RUN useradd --create-home --uid 10001 app
+USER app
+
 EXPOSE 8000
 
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]
+# forwarded-allow-ips "*" : l'API n'est joignable que par Caddy (réseau Docker, pas de
+# port publié). Sans ça tous les visiteurs partagent l'IP de Caddy et les limites
+# de requêtes (login, inscription…) s'appliquent au site entier au lieu de chaque client.
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]
