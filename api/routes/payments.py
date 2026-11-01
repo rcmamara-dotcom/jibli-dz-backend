@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/payments", tags=["payments"])
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 PUBLIC_URL = os.environ.get("PUBLIC_URL", "https://jiblidz.com")
-PRICE_CENTS = 500  # 5€
+PRICE_CENTS = 300  # 3€
 
 
 @router.post("/create-checkout")
