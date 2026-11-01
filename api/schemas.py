@@ -6,6 +6,7 @@ _WA_RE = re.compile(r"^\+\d{7,15}$")
 
 
 def _validate_wa(v: str) -> str:
+    v = v.replace(" ", "").replace("-", "")
     if not _WA_RE.match(v):
         raise ValueError("Numéro WhatsApp invalide (format : +33612345678)")
     return v
