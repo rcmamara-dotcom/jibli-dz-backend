@@ -29,6 +29,17 @@ www.{$DOMAIN:localhost} {
         reverse_proxy api:8000
     }
 
+    # ── Fichiers statiques servis directement (sitemap, robots, etc.) ──────────
+    handle /sitemap.xml {
+        root * /var/www/html
+        file_server
+    }
+
+    handle /robots.txt {
+        root * /var/www/html
+        file_server
+    }
+
     # ── Frontend (fichiers statiques React) ────────────────────────────────────
     handle {
         root * /var/www/html
