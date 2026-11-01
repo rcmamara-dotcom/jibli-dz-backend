@@ -163,3 +163,15 @@ def test_change_email_needs_password_and_reverification(client):
     r = client.post("/api/auth/change-email", headers=h, json={"new_email": "n@test.com", "password": "secret123"})
     assert r.status_code == 200
     assert r.json()["email"] == "n@test.com" and r.json()["email_verified"] is False
+
+
+def test_old_google_account_gets_verified_on_login(client):
+    """Compte Google créé avant la vérification e-mail : vérifié à la connexion, sans code."""
+    from godata.models import User
+    User.create(email="g@gmail.com", password_hash="", google_id="gid-1", email_verified=False)
+    claims = {"uid": "gid-1", "email": "g@gmail.com", "name": "G"}
+    with patch("api.routes.auth.verify_google_token", return_value=claims):
+        r = client.post("/api/auth/google", json={"id_token": "x"})
+    assert r.status_code == 200
+    me = client.get("/api/auth/me", headers=auth_headers(r.json()["access_token"])).json()
+    assert me["email_verified"] is True
