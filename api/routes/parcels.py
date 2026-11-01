@@ -12,16 +12,7 @@ router = APIRouter(prefix="/api/parcels", tags=["parcels"])
 
 
 def _serialize(p: Parcel) -> ParcelOut:
-    return ParcelOut(
-        id=p.id,
-        from_city=p.from_city,
-        to_city=p.to_city,
-        description=p.description,
-        budget=p.budget,
-        wa=p.wa,
-        owner_id=p.owner_id,
-        created_at=p.created_at,
-    )
+    return ParcelOut.model_validate(p)
 
 
 @router.get("", response_model=list[ParcelOut])

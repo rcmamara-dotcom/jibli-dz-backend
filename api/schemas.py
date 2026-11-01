@@ -149,10 +149,10 @@ class ParcelIn(BaseModel):
     description: str = Field(min_length=1, max_length=1000)
     budget: float = Field(default=0, ge=0, le=100_000)
     wa: str
-    weight: float | None = None
-    length: float | None = None
-    width: float | None = None
-    height: float | None = None
+    weight: float | None = Field(default=None, ge=0, le=1000)   # kg
+    length: float | None = Field(default=None, ge=0, le=500)    # cm
+    width: float | None = Field(default=None, ge=0, le=500)
+    height: float | None = Field(default=None, ge=0, le=500)
     parcel_type: str | None = None
 
     @field_validator("wa")

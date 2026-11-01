@@ -65,3 +65,13 @@ def test_list_parcels_pagination(client):
 
     r2 = client.get("/api/parcels?page=2&limit=3")
     assert len(r2.json()) == 2
+
+
+def test_parcel_details_returned(client):
+    token = register(client)
+    body = {**PARCEL_PAYLOAD, "weight": 3.5, "length": 40, "width": 30, "height": 20, "parcel_type": "vetements"}
+    r = client.post("/api/parcels", json=body, headers=auth_headers(token))
+    assert r.status_code == 201, r.text
+    got = client.get("/api/parcels").json()[0]
+    assert (got["weight"], got["length"], got["parcel_type"]) == (3.5, 40, "vetements")
+    assert client.post("/api/parcels", json={**PARCEL_PAYLOAD, "weight": -1}, headers=auth_headers(token)).status_code == 422
