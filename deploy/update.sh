@@ -27,8 +27,11 @@ if [[ "${1:-}" != "--api" ]]; then
   npx vite build
 
   echo "→ Copie des fichiers statiques..."
-  rm -rf "$SCRIPT_DIR/frontend"
-  cp -r "$DEPLOY_DIR/frontend/build" "$SCRIPT_DIR/frontend"
+  # On vide le dossier sans le supprimer : Caddy le monte en volume et resterait
+  # accroché à l'ancien dossier supprimé (site en 404 jusqu'au redémarrage).
+  mkdir -p "$SCRIPT_DIR/frontend"
+  find "$SCRIPT_DIR/frontend" -mindepth 1 -delete
+  cp -r "$DEPLOY_DIR/frontend/build/." "$SCRIPT_DIR/frontend/"
 fi
 
 # ── Rebuild + restart ─────────────────────────────────────────────────────────

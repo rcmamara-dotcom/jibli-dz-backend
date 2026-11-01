@@ -30,8 +30,11 @@ if [[ "${1:-}" != "--no-frontend" ]]; then
   npx vite build
 
   echo "→ Copie des fichiers statiques dans deploy/frontend/..."
-  rm -rf "$SCRIPT_DIR/frontend"
-  cp -r "$FRONTEND_DIR/build" "$SCRIPT_DIR/frontend"
+  # On vide le dossier sans le supprimer : Caddy le monte en volume et resterait
+  # accroché à l'ancien dossier supprimé (site en 404 jusqu'au redémarrage).
+  mkdir -p "$SCRIPT_DIR/frontend"
+  find "$SCRIPT_DIR/frontend" -mindepth 1 -delete
+  cp -r "$FRONTEND_DIR/build/." "$SCRIPT_DIR/frontend/"
 fi
 
 # ── 2. Vérification .env ──────────────────────────────────────────────────────
