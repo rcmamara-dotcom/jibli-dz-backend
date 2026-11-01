@@ -11,7 +11,7 @@ RUN pip install uv
 COPY pyproject.toml .
 # godata suit une branche git : sans ceci, Docker réutilise le cache et garde
 # l'ancienne version tant que pyproject.toml ne change pas.
-ADD https://api.github.com/repos/rcmamara-dotcom/jibli-dz-godata/git/refs/heads/feat/droits /tmp/godata-ref.json
+ADD https://api.github.com/repos/rcmamara-dotcom/jibli-dz-godata/git/refs/heads/develop /tmp/godata-ref.json
 RUN uv pip install --system --no-cache .
 
 COPY api/ ./api/
