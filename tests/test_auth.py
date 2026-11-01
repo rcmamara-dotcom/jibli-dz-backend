@@ -137,12 +137,13 @@ def test_verification_code_attempts_limited(client):
     assert client.post("/api/auth/verify-email", json={"code": code}, headers=h).status_code == 400
 
 
-def test_unverified_user_cannot_publish(client):
+def test_unverified_user_can_publish(client):
+    # La vérification e-mail est facultative : elle ne bloque pas la publication
     token = register(client, "nv@test.com", verified=False)
     r = client.post("/api/trips", headers=auth_headers(token), json={
         "name": "A", "from_city": "Paris", "to_city": "Alger", "date": "2030-01-01", "capacity": "2", "wa": "+33612345678",
     })
-    assert r.status_code == 403
+    assert r.status_code == 201
 
 
 def test_update_me(client):

@@ -37,11 +37,11 @@ def test_cannot_ship_with_own_trip(client):
     assert r.status_code == 400
 
 
-def test_unverified_sender_cannot_create(client):
+def test_unverified_sender_can_create(client):
     carrier = auth_headers(register(client, "c@test.com"))
     trip_id = client.post("/api/trips", json=TRIP, headers=carrier).json()["id"]
     nv = auth_headers(register(client, "nv@test.com", verified=False))
-    assert client.post("/api/shipments", json={"trip_id": trip_id, "description": "x"}, headers=nv).status_code == 403
+    assert client.post("/api/shipments", json={"trip_id": trip_id, "description": "x"}, headers=nv).status_code == 201
 
 
 def test_carrier_walks_all_steps_in_order(client):

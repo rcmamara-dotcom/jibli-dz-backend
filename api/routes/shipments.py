@@ -3,7 +3,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request,
 from godata.models import User, Shipment, SHIPMENT_STEPS, SHIPMENT_CANCELLED
 from godata.repos import ShipmentRepo, TripRepo, UserRepo
 from ..schemas import ShipmentIn, ShipmentStatusIn, ShipmentOut, ShipmentEventOut
-from ..auth import require_user, require_verified
+from ..auth import require_user
 from ..scheduler import _send
 from ..limiter import limiter
 
@@ -82,7 +82,7 @@ def list_shipments(user: User = Depends(require_user)) -> list[ShipmentOut]:
 
 @router.post("", response_model=ShipmentOut, status_code=status.HTTP_201_CREATED)
 @limiter.limit("20/day")
-def create_shipment(request: Request, body: ShipmentIn, bg: BackgroundTasks, user: User = Depends(require_verified)) -> ShipmentOut:
+def create_shipment(request: Request, body: ShipmentIn, bg: BackgroundTasks, user: User = Depends(require_user)) -> ShipmentOut:
     trip = TripRepo.get_by_id(body.trip_id)
     if not trip or not trip.owner_id:
         raise HTTPException(status_code=404, detail="Trajet introuvable")

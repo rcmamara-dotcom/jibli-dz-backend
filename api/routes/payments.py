@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from godata.models import User
 from godata.repos import TripRepo, ParcelRepo
 
-from ..auth import require_user, require_verified
+from ..auth import require_user
 from ..schemas import TripIn, ParcelIn
 from .subscriptions import get_user_subscription_info
 
@@ -21,7 +21,7 @@ PRICE_CENTS = 300  # 3€
 
 
 @router.post("/create-checkout")
-def create_checkout(request: Request, body: dict, user: User = Depends(require_verified)) -> dict:
+def create_checkout(request: Request, body: dict, user: User = Depends(require_user)) -> dict:
     listing_type = body.get("type")  # "trip" or "parcel"
     if listing_type not in ("trip", "parcel"):
         raise HTTPException(status_code=400, detail="Type invalide")
