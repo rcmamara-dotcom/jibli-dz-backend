@@ -201,3 +201,41 @@ class ParcelOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+# ── Shipment (suivi d'envoi) ──────────────────────────────────────────────────
+
+class ShipmentIn(BaseModel):
+    trip_id: int
+    description: str
+
+    @field_validator("description")
+    @classmethod
+    def not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Décris le colis")
+        return v[:500]
+
+
+class ShipmentStatusIn(BaseModel):
+    status: str
+
+
+class ShipmentEventOut(BaseModel):
+    status: str
+    created_at: datetime
+
+
+class ShipmentOut(BaseModel):
+    id: int
+    trip_id: int | None
+    from_city: str
+    to_city: str
+    trip_date: date | None
+    description: str
+    status: str
+    role: str                      # "sender" ou "carrier" pour l'utilisateur courant
+    counterpart_name: str | None   # l'autre personne de l'envoi
+    events: list[ShipmentEventOut]
+    created_at: datetime

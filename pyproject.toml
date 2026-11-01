@@ -24,7 +24,7 @@ build-backend = "hatchling.build"
 packages = ["api"]
 
 [tool.uv.sources]
-godata = { git = "https://github.com/rcmamara-dotcom/jibli-dz-godata", branch = "develop" }
+godata = { git = "https://github.com/rcmamara-dotcom/jibli-dz-godata", branch = "feat/suivi-envois" }
 
 [tool.uv]
 dev-dependencies = [
