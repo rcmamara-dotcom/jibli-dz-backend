@@ -12,10 +12,13 @@ www.{$DOMAIN:localhost} {
 
     # ── Fichiers cachés (.env, .git…) : jamais servis ──────────────────────────
     @hidden {
-        path */.*
+        path_regexp /\.
         not path /.well-known/*
     }
-    respond @hidden 404
+    # handle (et non respond seul) : sinon le bloc du site, prioritaire, renvoie index.html
+    handle @hidden {
+        respond 404
+    }
 
     # ── Backend API (doit être avant le file_server) ──────────────────────────
     handle /api/* {
