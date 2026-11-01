@@ -1,0 +1,29 @@
+www.{$DOMAIN:localhost} {
+    redir https://{$DOMAIN:localhost}{uri} permanent
+}
+
+{$DOMAIN:localhost} {
+
+    # ── Backend API (doit être avant le file_server) ──────────────────────────
+    handle /api/* {
+        reverse_proxy api:8000
+    }
+
+    # ── Frontend (fichiers statiques React) ────────────────────────────────────
+    handle {
+        root * /var/www/html
+        file_server
+        try_files {path} /index.html
+    }
+
+    # ── Sécurité basique ─────────────────────────────────────────────────────────────
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+    }
+
+    # ── Compression ────────────────────────────────────────────────────────────────
+    encode gzip
+}
