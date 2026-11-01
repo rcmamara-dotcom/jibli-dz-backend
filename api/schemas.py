@@ -138,6 +138,8 @@ class TripOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+PARCEL_TYPES = ("vetements", "alimentaire", "electronique", "medicaments", "documents", "autre")
+
 # ── Parcel ────────────────────────────────────────────────────────────────────
 
 PARCEL_TYPES = ("vetements", "alimentaire", "electronique", "medicaments", "documents", "autre")
