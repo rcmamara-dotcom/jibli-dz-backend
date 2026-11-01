@@ -140,17 +140,32 @@ class TripOut(BaseModel):
 
 # ── Parcel ────────────────────────────────────────────────────────────────────
 
+PARCEL_TYPES = ("vetements", "alimentaire", "electronique", "medicaments", "documents", "autre")
+
+
 class ParcelIn(BaseModel):
     from_city: str
     to_city: str
     description: str
     budget: float = 0
     wa: str
+    weight: float | None = None
+    length: float | None = None
+    width: float | None = None
+    height: float | None = None
+    parcel_type: str | None = None
 
     @field_validator("wa")
     @classmethod
     def validate_wa(cls, v: str) -> str:
         return _validate_wa(v)
+
+    @field_validator("parcel_type")
+    @classmethod
+    def validate_parcel_type(cls, v: str | None) -> str | None:
+        if v and v not in PARCEL_TYPES:
+            raise ValueError(f"Type invalide. Valeurs acceptées : {', '.join(PARCEL_TYPES)}")
+        return v
 
 
 # ── Admin ─────────────────────────────────────────────────────────────────────
@@ -205,6 +220,11 @@ class ParcelOut(BaseModel):
     budget: float
     wa: str
     owner_id: int | None
+    weight: float | None = None
+    length: float | None = None
+    width: float | None = None
+    height: float | None = None
+    parcel_type: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
