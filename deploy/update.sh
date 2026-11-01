@@ -31,6 +31,11 @@ if [[ "${1:-}" != "--api" ]]; then
   echo "→ Copie des fichiers statiques..."
   # On vide le dossier sans le supprimer : Caddy le monte en volume et resterait
   # accroché à l'ancien dossier supprimé (site en 404 jusqu'au redémarrage).
+  # Vérifier le build AVANT de vider le dossier servi : sinon le site tombe en 404
+  if [[ ! -f "$DEPLOY_DIR/frontend/build/index.html" ]]; then
+    echo "❌ Build introuvable dans $DEPLOY_DIR/frontend/build — site en ligne laissé tel quel"
+    exit 1
+  fi
   mkdir -p "$SCRIPT_DIR/frontend"
   find "$SCRIPT_DIR/frontend" -mindepth 1 -delete
   cp -r "$DEPLOY_DIR/frontend/build/." "$SCRIPT_DIR/frontend/"
