@@ -39,7 +39,6 @@ def create_checkout(request: Request, body: dict, user: User = Depends(require_u
 
     try:
         session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
             line_items=[{
                 "price_data": {
                     "currency": "eur",
