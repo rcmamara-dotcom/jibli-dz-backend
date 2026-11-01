@@ -4,6 +4,7 @@ from godata.repos import TripRepo, ReviewRepo
 from godata.models import Trip, User
 from ..schemas import TripIn, TripOut
 from ..auth import require_user
+from ..permissions import require
 from ..scheduler import notify_matching_parcels
 from ..limiter import limiter
 
@@ -51,7 +52,8 @@ def list_trips(
 
 @router.post("", response_model=TripOut, status_code=status.HTTP_201_CREATED)
 @limiter.limit("5/hour")
-def create_trip(request: Request, body: TripIn, bg: BackgroundTasks, user: User = Depends(require_user)) -> TripOut:
+def create_trip(request: Request, body: TripIn, bg: BackgroundTasks, user: User = Depends(require("publish_free"))) -> TripOut:
+    # Les autres passent par /api/payments/create-checkout (paiement ou abonnement)
     log.debug("POST /api/trips — user_id=%s", user.id)
     try:
         trip = TripRepo.create(owner_id=user.id, **body.model_dump())

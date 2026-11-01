@@ -4,6 +4,7 @@ from godata.repos import ParcelRepo
 from godata.models import Parcel, User
 from ..schemas import ParcelIn, ParcelOut
 from ..auth import require_user
+from ..permissions import require
 from ..limiter import limiter
 
 log = logging.getLogger(__name__)
@@ -42,7 +43,8 @@ def list_parcels(
 
 @router.post("", response_model=ParcelOut, status_code=status.HTTP_201_CREATED)
 @limiter.limit("5/hour")
-def create_parcel(request: Request, body: ParcelIn, user: User = Depends(require_user)) -> ParcelOut:
+def create_parcel(request: Request, body: ParcelIn, user: User = Depends(require("publish_free"))) -> ParcelOut:
+    # Les autres passent par /api/payments/create-checkout (paiement ou abonnement)
     log.debug("POST /api/parcels — user_id=%s", user.id)
     try:
         parcel = ParcelRepo.create(owner_id=user.id, **body.model_dump())

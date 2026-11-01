@@ -17,7 +17,7 @@ def _checkout(client, headers):
 
 
 def test_normal_user_must_pay(client):
-    r, create = _checkout(client, auth_headers(register(client, "u@test.com")))
+    r, create = _checkout(client, auth_headers(register(client, "u@test.com", role="user")))
     assert r.status_code == 200
     assert r.json()["checkout_url"] and not r.json().get("published")
     create.assert_called_once()
@@ -90,3 +90,10 @@ def test_create_admin_rejects_short_password(fresh_db):
     with patch("api.create_admin.init_db"), patch("api.create_admin.getpass.getpass", return_value="court"):
         assert create_admin.main(["x", "boss@test.com"]) == 1
     assert UserRepo.get_by_email("boss@test.com") is None
+
+
+def test_normal_user_cannot_bypass_payment(client):
+    h = auth_headers(register(client, "u@test.com", role="user"))
+    assert client.post("/api/trips", json=TRIP_PAYLOAD, headers=h).status_code == 403
+    parcel = {"from_city": "Paris", "to_city": "Oran", "description": "x", "wa": "+33612345678"}
+    assert client.post("/api/parcels", json=parcel, headers=h).status_code == 403

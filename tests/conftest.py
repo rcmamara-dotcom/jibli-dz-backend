@@ -70,15 +70,18 @@ def client(fresh_db):
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def register(client, email="user@test.com", password="secret123", verified=True):
+def register(client, email="user@test.com", password="secret123", verified=True, role="vip"):
+    """Inscrit un compte. role="vip" par défaut pour pouvoir publier directement via /api/trips."""
     r = client.post("/api/auth/register", json={
         "email": email, "phone": "+33612345678",
         "password": password, "confirm_password": password,
     })
     assert r.status_code == 201, r.text
+    from godata.repos import UserRepo
+    user_id = UserRepo.get_by_email(email).id
     if verified:
-        from godata.repos import UserRepo
-        UserRepo.set_email_verified(UserRepo.get_by_email(email).id)
+        UserRepo.set_email_verified(user_id)
+    UserRepo.set_role(user_id, role)
     return r.json()["access_token"]
 
 
