@@ -5,7 +5,7 @@ import os
 import tempfile
 import pytest
 
-os.environ["JWT_SECRET"] = "test-secret-key"
+os.environ["JWT_SECRET"] = "test-secret-key-at-least-32-characters-long"
 os.environ["JWT_ALGORITHM"] = "HS256"
 os.environ["JWT_EXPIRE_MINUTES"] = "60"
 os.environ["SMTP_HOST"] = ""

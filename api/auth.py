@@ -4,7 +4,8 @@ import bcrypt
 from datetime import datetime, timedelta, timezone
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
+import jwt
+from jwt import PyJWTError as JWTError
 from godata.repos import UserRepo
 from godata.models import User
 
