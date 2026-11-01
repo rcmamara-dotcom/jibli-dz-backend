@@ -9,6 +9,7 @@ from godata.repos import TripRepo, ParcelRepo
 
 from ..auth import require_user
 from ..schemas import TripIn, ParcelIn
+from .subscriptions import get_user_subscription_info
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/payments", tags=["payments"])
@@ -33,6 +34,24 @@ def create_checkout(request: Request, body: dict, user: User = Depends(require_u
             ParcelIn(**body.get("data", {}))
     except Exception as e:
         raise HTTPException(status_code=422, detail=str(e))
+
+    # If user has active subscription with remaining quota, publish directly
+    sub_info = get_user_subscription_info(user.id)
+    if sub_info["plan"] and sub_info["status"] in ("active", "trialing"):
+        remaining = sub_info.get("remaining")
+        if remaining is None or remaining > 0:
+            data = body.get("data", {})
+            try:
+                if listing_type == "trip":
+                    trip_data = TripIn(**data)
+                    TripRepo.create(owner_id=user.id, **trip_data.model_dump())
+                else:
+                    parcel_data = ParcelIn(**data)
+                    ParcelRepo.create(owner_id=user.id, **parcel_data.model_dump())
+            except Exception as e:
+                raise HTTPException(status_code=422, detail=str(e))
+            log.info("Publication via subscription: user=%s plan=%s type=%s", user.id, sub_info["plan"], listing_type)
+            return {"published": True, "checkout_url": None}
 
     # Stripe metadata is limited to 500 chars per value
     data_json = json.dumps(body.get("data", {}), ensure_ascii=False)
