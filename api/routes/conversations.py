@@ -2,7 +2,7 @@ import logging
 import os
 from html import escape
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
-from godata.repos import ConversationRepo, TripRepo, ParcelRepo
+from godata.repos import ConversationRepo, TripRepo, ParcelRepo, UserReviewRepo
 from godata.models import User, Conversation, Message
 from ..schemas import ConversationStartIn, ConversationOut, MessageIn, MessageOut
 from ..auth import require_user
@@ -56,7 +56,7 @@ def _serialize_message(msg: Message, _: int) -> MessageOut:
     )
 
 
-def _serialize_conversation(conv: Conversation, user_id: int) -> ConversationOut:
+def _serialize_conversation(conv: Conversation, user_id: int, ratings: dict | None = None) -> ConversationOut:
     is_initiator = conv.initiator_id == user_id
     other = conv.recipient if is_initiator else conv.initiator
     messages = ConversationRepo.list_messages(conv.id)
@@ -64,10 +64,13 @@ def _serialize_conversation(conv: Conversation, user_id: int) -> ConversationOut
     unread = sum(
         1 for m in messages if not m.is_read and m.sender_id != user_id
     )
+    rating = (ratings if ratings is not None else UserReviewRepo.bulk([other.id])).get(other.id)
     return ConversationOut(
         id=conv.id,
         other_user_id=other.id,
         other_user_name=other.name,
+        other_user_rating=rating["avg"] if rating else None,
+        other_user_review_count=rating["count"] if rating else 0,
         trip_id=conv.trip_id,
         parcel_id=conv.parcel_id,
         last_message=last.content if last else None,
@@ -107,7 +110,9 @@ def start_conversation(
 @router.get("", response_model=list[ConversationOut])
 def list_conversations(user: User = Depends(require_user)) -> list[ConversationOut]:
     convs = ConversationRepo.list_for_user(user.id)
-    return [_serialize_conversation(c, user.id) for c in convs]
+    others = {c.recipient_id if c.initiator_id == user.id else c.initiator_id for c in convs}
+    ratings = UserReviewRepo.bulk(list(others))
+    return [_serialize_conversation(c, user.id, ratings) for c in convs]
 
 
 @router.get("/unread", response_model=dict)

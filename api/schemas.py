@@ -193,23 +193,41 @@ class AdminStatsOut(BaseModel):
 # ── Review ────────────────────────────────────────────────────────────────────
 
 class ReviewIn(BaseModel):
-    rating: int       # 1–5
+    rating: int = Field(ge=1, le=5)
     comment: str | None = Field(default=None, max_length=1000)
 
 
 class ReviewOut(BaseModel):
     id: int
-    trip_id: int
     reviewer_id: int
-    reviewer_email: str
+    reviewer_name: str      # « Karim M. » : jamais l'e-mail
+    rating: int
+    comment: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class AdminReviewOut(BaseModel):
+    id: int
+    reviewer_name: str
+    reviewed_id: int
+    reviewed_name: str
     rating: int
     comment: str | None
     created_at: datetime
 
-    model_config = {"from_attributes": True}
 
+class ProfileOut(BaseModel):
+    id: int
+    name: str
+    member_since: datetime
+    avg: float | None
+    count: int
+    distribution: dict[int, int]
+    reviews: list[ReviewOut]
+    my_review: ReviewOut | None = None
+    can_review: bool = False
 
-# ── Parcel ────────────────────────────────────────────────────────────────────
 
 class ParcelOut(BaseModel):
     id: int
@@ -225,6 +243,8 @@ class ParcelOut(BaseModel):
     height: float | None = None
     parcel_type: str | None = None
     created_at: datetime
+    owner_rating: float | None = None
+    owner_review_count: int = 0
 
     model_config = {"from_attributes": True}
 
@@ -311,6 +331,8 @@ class ConversationOut(BaseModel):
     id: int
     other_user_id: int
     other_user_name: str | None
+    other_user_rating: float | None = None
+    other_user_review_count: int = 0
     trip_id: int | None
     parcel_id: int | None
     last_message: str | None

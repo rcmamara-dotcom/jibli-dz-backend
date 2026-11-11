@@ -1,6 +1,6 @@
 import logging
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
-from godata.repos import TripRepo, ReviewRepo
+from godata.repos import TripRepo, UserReviewRepo
 from godata.models import Trip, User
 from ..schemas import TripIn, TripOut
 from ..auth import require_user
@@ -40,7 +40,7 @@ def list_trips(
     try:
         trips = TripRepo.list_all()
         owner_ids = list({t.owner_id for t in trips if t.owner_id})
-        ratings = ReviewRepo.bulk_ratings(owner_ids)
+        ratings = UserReviewRepo.bulk(owner_ids)
         offset = (page - 1) * limit
         page_trips = trips[offset:offset + limit]
         log.debug("list_trips: %d/%d résultats", len(page_trips), len(trips))

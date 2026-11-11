@@ -12,10 +12,12 @@ os.environ["SMTP_HOST"] = ""
 os.environ["RATELIMIT_ENABLED"] = "false"   # disable slowapi in tests
 
 from peewee import SqliteDatabase
-from godata.models import User, Trip, Parcel, Review, Subscription, Shipment, ShipmentEvent
+from godata.models import (
+    User, Trip, Parcel, Review, Subscription, Shipment, ShipmentEvent, Conversation, Message, UserReview,
+)
 import godata.db as _godata_db
 
-MODELS = [User, Trip, Parcel, Review, Subscription, Shipment, ShipmentEvent]
+MODELS = [User, Trip, Parcel, Review, Subscription, Shipment, ShipmentEvent, Conversation, Message, UserReview]
 
 
 @pytest.fixture(autouse=True)
@@ -43,7 +45,7 @@ def client(fresh_db):
     from fastapi.middleware.cors import CORSMiddleware
     from slowapi import _rate_limit_exceeded_handler
     from slowapi.errors import RateLimitExceeded
-    from api.routes import auth, trips, parcels, reviews, admin, shipments, payments
+    from api.routes import auth, trips, parcels, reviews, admin, shipments, payments, conversations
     from api.limiter import limiter
 
     app = FastAPI()
@@ -57,6 +59,7 @@ def client(fresh_db):
     app.include_router(admin.router)
     app.include_router(shipments.router)
     app.include_router(payments.router)
+    app.include_router(conversations.router)
 
     @app.middleware("http")
     async def db_middleware(request: Request, call_next):

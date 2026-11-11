@@ -1,6 +1,6 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from godata.repos import ParcelRepo
+from godata.repos import ParcelRepo, UserReviewRepo
 from godata.models import Parcel, User
 from ..schemas import ParcelIn, ParcelOut
 from ..auth import require_user
@@ -11,8 +11,12 @@ log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/parcels", tags=["parcels"])
 
 
-def _serialize(p: Parcel) -> ParcelOut:
-    return ParcelOut.model_validate(p)
+def _serialize(p: Parcel, ratings: dict | None = None) -> ParcelOut:
+    out = ParcelOut.model_validate(p)
+    rating = (ratings or {}).get(p.owner_id)
+    if rating:
+        out.owner_rating, out.owner_review_count = rating["avg"], rating["count"]
+    return out
 
 
 @router.get("", response_model=list[ParcelOut])
@@ -25,8 +29,9 @@ def list_parcels(
         parcels = ParcelRepo.list_all()
         offset = (page - 1) * limit
         page_parcels = parcels[offset:offset + limit]
+        ratings = UserReviewRepo.bulk(list({p.owner_id for p in page_parcels if p.owner_id}))
         log.debug("list_parcels: %d/%d résultats", len(page_parcels), len(parcels))
-        return [_serialize(p) for p in page_parcels]
+        return [_serialize(p, ratings) for p in page_parcels]
     except Exception as e:
         log.exception("Erreur dans GET /api/parcels: %s", e)
         raise HTTPException(status_code=500, detail="Erreur interne")

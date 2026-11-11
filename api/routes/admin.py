@@ -1,8 +1,9 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status
-from godata.models import ROLES, User, Trip, Parcel, Review
-from godata.repos import UserRepo, TripRepo, ParcelRepo, ReviewRepo
-from ..schemas import UserAdminOut, AdminStatsOut, RoleIn, TripOut, ParcelOut, ReviewOut
+from godata.models import ROLES, User, Trip, Parcel, UserReview
+from godata.repos import UserRepo, TripRepo, ParcelRepo, UserReviewRepo
+from ..schemas import UserAdminOut, AdminStatsOut, RoleIn, TripOut, ParcelOut, AdminReviewOut
+from .reviews import public_name
 from ..permissions import require
 
 log = logging.getLogger(__name__)
@@ -17,7 +18,7 @@ def stats(_: User = Depends(require("moderate"))) -> AdminStatsOut:
         users=User.select().count(),
         trips=Trip.select().count(),
         parcels=Parcel.select().count(),
-        reviews=Review.select().count(),
+        reviews=UserReview.select().count(),
     )
 
 
@@ -88,20 +89,20 @@ def delete_parcel(parcel_id: int, _: User = Depends(require("moderate"))) -> Non
 
 # ── Reviews ───────────────────────────────────────────────────────────────────
 
-def _review_out(r: Review) -> ReviewOut:
-    return ReviewOut(
-        id=r.id, trip_id=r.trip_id, reviewer_id=r.reviewer_id,
-        reviewer_email=r.reviewer.email, rating=r.rating,
+def _review_out(r: UserReview) -> AdminReviewOut:
+    return AdminReviewOut(
+        id=r.id, reviewer_name=public_name(r.reviewer), reviewed_id=r.reviewed_id,
+        reviewed_name=public_name(r.reviewed), rating=r.rating,
         comment=r.comment, created_at=r.created_at,
     )
 
 
-@router.get("/reviews", response_model=list[ReviewOut])
-def list_reviews(_: User = Depends(require("moderate"))) -> list[ReviewOut]:
-    return [_review_out(r) for r in ReviewRepo.list_all()]
+@router.get("/reviews", response_model=list[AdminReviewOut])
+def list_reviews(_: User = Depends(require("moderate"))) -> list[AdminReviewOut]:
+    return [_review_out(r) for r in UserReviewRepo.list_all()]
 
 
 @router.delete("/reviews/{review_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_review(review_id: int, _: User = Depends(require("moderate"))) -> None:
-    if not ReviewRepo.force_delete(review_id):
+    if not UserReviewRepo.force_delete(review_id):
         raise HTTPException(status_code=404, detail="Avis introuvable")
