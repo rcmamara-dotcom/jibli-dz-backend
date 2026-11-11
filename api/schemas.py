@@ -74,6 +74,7 @@ class MeOut(BaseModel):
     has_password: bool = True   # False pour un compte créé via Google
     role: str = "user"
     is_admin: bool
+    notify_messages: bool = True
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -84,6 +85,14 @@ class UpdateMeIn(BaseModel):
     name: str | None = Field(default=None, max_length=100)
     phone: str | None = None
     birth_date: date | None = None
+    notify_messages: bool | None = None
+
+    @field_validator("notify_messages")
+    @classmethod
+    def notify_not_null(cls, v: bool | None) -> bool:
+        if v is None:
+            raise ValueError("notify_messages doit être true ou false")
+        return v
 
     @field_validator("phone")
     @classmethod
