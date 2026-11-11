@@ -112,12 +112,7 @@ class TripIn(BaseModel):
     capacity: str = Field(min_length=1, max_length=10)
     weight: float | None = Field(default=None, ge=0, le=1000)
     cap_desc: str | None = Field(default=None, max_length=1000)
-    wa: str
-
-    @field_validator("wa")
-    @classmethod
-    def validate_wa(cls, v: str) -> str:
-        return _validate_wa(v)
+    wa: str | None = None  # WhatsApp désactivé — messagerie interne
 
 
 class TripOut(BaseModel):
@@ -148,17 +143,12 @@ class ParcelIn(BaseModel):
     to_city: str = Field(min_length=1, max_length=100)
     description: str = Field(min_length=1, max_length=1000)
     budget: float = Field(default=0, ge=0, le=100_000)
-    wa: str
     weight: float | None = Field(default=None, ge=0, le=1000)   # kg
     length: float | None = Field(default=None, ge=0, le=500)    # cm
     width: float | None = Field(default=None, ge=0, le=500)
     height: float | None = Field(default=None, ge=0, le=500)
+    wa: str | None = None  # WhatsApp désactivé — messagerie interne
     parcel_type: str | None = None
-
-    @field_validator("wa")
-    @classmethod
-    def validate_wa(cls, v: str) -> str:
-        return _validate_wa(v)
 
     @field_validator("parcel_type")
     @classmethod
