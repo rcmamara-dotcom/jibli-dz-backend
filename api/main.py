@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from godata import init_db, database
-from .routes import auth, trips, parcels, reviews, admin, payments, subscriptions, shipments
+from .routes import auth, trips, parcels, reviews, admin, payments, subscriptions, shipments, conversations
 from .scheduler import start_scheduler, stop_scheduler
 from .limiter import limiter
 
@@ -43,6 +43,7 @@ app.include_router(admin.router)
 app.include_router(payments.router)
 app.include_router(subscriptions.router)
 app.include_router(shipments.router)
+app.include_router(conversations.router)
 
 
 @app.middleware("http")

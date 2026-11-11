@@ -266,3 +266,55 @@ class ShipmentOut(BaseModel):
     counterpart_name: str | None   # l'autre personne de l'envoi
     events: list[ShipmentEventOut]
     created_at: datetime
+
+
+# ── Messagerie ────────────────────────────────────────────────────────────────
+
+class ConversationStartIn(BaseModel):
+    """Démarrer une conversation sur un trajet ou un colis."""
+    trip_id: int | None = None
+    parcel_id: int | None = None
+    message: str = Field(min_length=1, max_length=2000)
+
+    @field_validator("message")
+    @classmethod
+    def not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Le message ne peut pas être vide")
+        return v
+
+
+class MessageIn(BaseModel):
+    content: str = Field(min_length=1, max_length=2000)
+
+    @field_validator("content")
+    @classmethod
+    def not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Le message ne peut pas être vide")
+        return v
+
+
+class MessageOut(BaseModel):
+    id: int
+    sender_id: int
+    sender_name: str | None
+    content: str
+    is_read: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ConversationOut(BaseModel):
+    id: int
+    other_user_id: int
+    other_user_name: str | None
+    trip_id: int | None
+    parcel_id: int | None
+    last_message: str | None
+    last_message_at: datetime | None
+    unread_count: int
+    created_at: datetime
